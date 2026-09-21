@@ -21,10 +21,10 @@
   </select>
   <input type="hidden" name="sort" value="{{ sort }}"><input type="hidden" name="dir" value="{{ direction }}">
   <button class="btn small secondary">Filtrează</button>
-  {% if is_admin %}<a class="btn small secondary" href="{{ url_for('export_supplies') }}">Export CSV</a>{% endif %}
+  {% if is_staff %}<a class="btn small secondary" href="{{ url_for('export_supplies') }}">Export CSV</a>{% endif %}
 </form>
 
-{% if is_admin %}
+{% if is_staff %}
 <details class="card" {{ 'open' if not stats.total }}>
   <summary><strong>+ Adaugă rechizit</strong></summary>
   <form method="post" class="addgrid">
@@ -46,7 +46,7 @@
     <thead><tr>
       {{ sort_th('name', 'Rechizit') }}{{ sort_th('cat', 'Categorie') }}{{ sort_th('votes', 'De comandat', 'num') }}
       <th class="num">Plătit</th><th class="num">Primit</th>
-      <th>{{ 'Acțiuni' if is_admin else 'Copilul meu' }}</th>
+      <th>{{ 'Acțiuni' if is_staff else 'Copilul meu' }}</th>
     </tr></thead>
     <tbody>
       {% for s in supplies %}{% include "_supply_row.html" %}{% endfor %}
@@ -59,7 +59,7 @@
   {% elif stats.total %}
     <p class="muted">Niciun rechizit nu se potrivește filtrelor.</p>
   {% else %}
-    <p class="muted">Nu există rechizite încă.{% if is_admin %} Adaugă primul rechizit mai sus.{% endif %}</p>
+    <p class="muted">Nu există rechizite încă.{% if is_staff %} Adaugă primul rechizit mai sus.{% endif %}</p>
   {% endif %}
 </section>
 

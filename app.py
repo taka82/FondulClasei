@@ -155,7 +155,19 @@ def login_required(view):
     return wrapper
 
 
+def staff_required(view):
+    """Administrator sau casier (tot ce tine de bani si rechizite)."""
+    @wraps(view)
+    @login_required
+    def wrapper(*a, **kw):
+        if g.user["role"] not in ("admin", "casier"):
+            abort(403)
+        return view(*a, **kw)
+    return wrapper
+
+
 def admin_required(view):
+    """Doar administratorul: conturi si setari."""
     @wraps(view)
     @login_required
     def wrapper(*a, **kw):
@@ -163,6 +175,10 @@ def admin_required(view):
             abort(403)
         return view(*a, **kw)
     return wrapper
+
+
+def is_staff():
+    return g.user is not None and g.user["role"] in ("admin", "casier")
 
 
 def is_admin():
@@ -173,6 +189,7 @@ def is_admin():
 def inject_globals():
     return {
         "user": g.get("user"),
+        "is_staff": is_staff(),
         "is_admin": is_admin(),
         "class_name": db.get_setting("class_name", "Fondul clasei"),
         "has_logo": (BASE_DIR / "static" / "logo.png").exists(),  # sigla optionala: pune fisierul static/logo.png
@@ -228,7 +245,7 @@ def setup():
                 (username, generate_password_hash(password)),
             )
             db.set_setting("class_name", class_name)
-            flash("Cont de casier creat. Te poți autentifica.", "ok")
+            flash("Cont de administrator creat. Te poți autentifica.", "ok")
             return redirect(url_for("login"))
     return render_template("setup.html")
 
@@ -281,7 +298,7 @@ def dashboard():
     )
     recent_payments = []
     my_student = None
-    if is_admin():
+    if is_staff():
         recent_payments = db.query(
             "SELECT p.*, s.name AS student, c.name AS contribution FROM payments p "
             "JOIN students s ON s.id = p.student_id "
@@ -301,7 +318,7 @@ def dashboard():
 # ---------------------------------------------------------------- elevi
 
 @app.route("/students", methods=["GET", "POST"])
-@admin_required
+@staff_required
 def students():
     if request.method == "POST":
         names = [n.strip() for n in request.form.get("names", "").splitlines() if n.strip()]
@@ -328,7 +345,7 @@ def student_or_403(student_id):
     student = db.one("SELECT * FROM students WHERE id = ?", (student_id,))
     if student is None:
         abort(404)
-    if not is_admin() and g.user["student_id"] != student_id:
+    if not is_staff() and g.user["student_id"] != student_id:
         abort(403)
     return student
 
@@ -360,13 +377,13 @@ def student_detail(student_id):
 @app.route("/me")
 @login_required
 def me():
-    if is_admin() or not g.user["student_id"]:
+    if is_staff() or not g.user["student_id"]:
         return redirect(url_for("dashboard"))
     return redirect(url_for("student_detail", student_id=g.user["student_id"]))
 
 
 @app.post("/students/<int:student_id>/edit")
-@admin_required
+@staff_required
 def student_edit(student_id):
     student_or_403(student_id)
     name = request.form.get("name", "").strip()[:100]
@@ -379,7 +396,7 @@ def student_edit(student_id):
 
 
 @app.post("/students/<int:student_id>/toggle")
-@admin_required
+@staff_required
 def student_toggle(student_id):
     student_or_403(student_id)
     db.execute("UPDATE students SET active = 1 - active WHERE id = ?", (student_id,))
@@ -387,7 +404,7 @@ def student_toggle(student_id):
 
 
 @app.post("/students/<int:student_id>/delete")
-@admin_required
+@staff_required
 def student_delete(student_id):
     student_or_403(student_id)
     if db.scalar("SELECT COUNT(*) FROM payments WHERE student_id = ?", (student_id,)):
@@ -411,7 +428,7 @@ def read_contribution_form():
 
 
 @app.route("/contributions", methods=["GET", "POST"])
-@admin_required
+@staff_required
 def contributions():
     if request.method == "POST":
         try:
@@ -444,7 +461,7 @@ def contribution_or_404(cid):
 
 
 @app.route("/contributions/<int:cid>")
-@admin_required
+@staff_required
 def contribution_detail(cid):
     contribution = contribution_or_404(cid)
     rows = db.query(
@@ -458,7 +475,7 @@ def contribution_detail(cid):
 
 
 @app.route("/contributions/<int:cid>/edit", methods=["GET", "POST"])
-@admin_required
+@staff_required
 def contribution_edit(cid):
     contribution = contribution_or_404(cid)
     if request.method == "POST":
@@ -476,7 +493,7 @@ def contribution_edit(cid):
 
 
 @app.post("/contributions/<int:cid>/delete")
-@admin_required
+@staff_required
 def contribution_delete(cid):
     contribution_or_404(cid)
     if db.scalar("SELECT COUNT(*) FROM payments WHERE contribution_id = ?", (cid,)):
@@ -490,7 +507,7 @@ def contribution_delete(cid):
 # ---------------------------------------------------------------- plati
 
 @app.post("/payments")
-@admin_required
+@staff_required
 def payment_add():
     back = safe_next(request.form.get("next")) or url_for("students")
     try:
@@ -514,7 +531,7 @@ def payment_add():
 
 
 @app.post("/payments/<int:payment_id>/delete")
-@admin_required
+@staff_required
 def payment_delete(payment_id):
     db.execute("DELETE FROM payments WHERE id = ?", (payment_id,))
     flash("Plată ștearsă.", "ok")
@@ -542,7 +559,7 @@ def expense_categories():
 @login_required
 def expenses():
     if request.method == "POST":
-        if not is_admin():
+        if not is_staff():
             abort(403)
         try:
             db.execute(
@@ -560,7 +577,7 @@ def expenses():
 
 
 @app.route("/expenses/<int:expense_id>/edit", methods=["GET", "POST"])
-@admin_required
+@staff_required
 def expense_edit(expense_id):
     expense = db.one("SELECT * FROM expenses WHERE id = ?", (expense_id,))
     if expense is None:
@@ -580,7 +597,7 @@ def expense_edit(expense_id):
 
 
 @app.post("/expenses/<int:expense_id>/delete")
-@admin_required
+@staff_required
 def expense_delete(expense_id):
     db.execute("DELETE FROM expenses WHERE id = ?", (expense_id,))
     flash("Cheltuială ștearsă.", "ok")
@@ -597,7 +614,7 @@ def users():
         password = request.form.get("password", "")
         role = request.form.get("role", "parent")
         student_id = request.form.get("student_id") or None
-        if role not in ("admin", "parent"):
+        if role not in ("admin", "casier", "parent"):
             role = "parent"
         error = credentials_error(username, password)
         if error:
@@ -642,7 +659,7 @@ def user_delete(user_id):
     if target is None:
         abort(404)
     if target["role"] == "admin" and db.scalar("SELECT COUNT(*) FROM users WHERE role = 'admin'") <= 1:
-        flash("Nu poți șterge ultimul cont de casier.", "error")
+        flash("Nu poți șterge ultimul cont de administrator.", "error")
     elif target["id"] == g.user["id"]:
         flash("Nu îți poți șterge propriul cont.", "error")
     else:
@@ -718,7 +735,7 @@ def export_expenses():
 
 
 @app.route("/export/payments.csv")
-@admin_required
+@staff_required
 def export_payments():
     rows = db.query(
         "SELECT p.*, s.name AS student, c.name AS contribution FROM payments p "
@@ -732,7 +749,7 @@ def export_payments():
 
 
 @app.route("/export/restante.csv")
-@admin_required
+@staff_required
 def export_outstanding():
     rows = db.query(
         "SELECT s.name AS student, c.name AS contribution, b.amount, b.paid FROM balances b "
@@ -783,7 +800,7 @@ def active_student_count():
 
 def my_tracking():
     """Bifele copilului asociat contului de parinte: {supply_id: rand}."""
-    if is_admin() or not g.user["student_id"]:
+    if is_staff() or not g.user["student_id"]:
         return {}
     return {r["supply_id"]: r for r in db.query(
         "SELECT * FROM supply_tracking WHERE student_id = ?", (g.user["student_id"],))}
@@ -813,7 +830,7 @@ def read_supply_form():
 @login_required
 def supplies():
     if request.method == "POST":
-        if not is_admin():
+        if not is_staff():
             abort(403)
         try:
             db.execute("INSERT INTO supplies(name, category, note) VALUES (?, ?, ?)", read_supply_form())
@@ -862,14 +879,14 @@ def supply_detail(supply_id):
         "WHERE st.active = 1 OR t.chosen OR t.paid OR t.received "
         "ORDER BY st.name COLLATE NOCASE", (supply_id,)
     )
-    if not is_admin():
+    if not is_staff():
         rows = [r for r in rows if r["id"] == g.user["student_id"]]
     return render_template("supply_detail.html", supply=supply, rows=rows, total=active_student_count(),
                            can_vote=parent_student_id() is not None)
 
 
 @app.route("/supplies/<int:supply_id>/edit", methods=["GET", "POST"])
-@admin_required
+@staff_required
 def supply_edit(supply_id):
     supply = supply_or_404(supply_id)
     if request.method == "POST":
@@ -886,7 +903,7 @@ def supply_edit(supply_id):
 
 
 @app.post("/supplies/<int:supply_id>/delete")
-@admin_required
+@staff_required
 def supply_delete(supply_id):
     supply_or_404(supply_id)
     db.execute("DELETE FROM supplies WHERE id = ?", (supply_id,))
@@ -895,7 +912,7 @@ def supply_delete(supply_id):
 
 
 @app.post("/supplies/<int:supply_id>/track")
-@admin_required
+@staff_required
 def supply_track(supply_id):
     """Salveaza bifele Ales / Plătit / Primit ale unui elev pentru un rechizit."""
     supply_or_404(supply_id)
@@ -920,7 +937,7 @@ def supply_track(supply_id):
 
 def parent_student_id():
     """Elevul contului de parinte, doar daca e activ (None pentru casier sau elev dezactivat)."""
-    student_id = None if is_admin() else g.user["student_id"]
+    student_id = None if is_staff() else g.user["student_id"]
     if student_id and db.scalar("SELECT active FROM students WHERE id = ?", (student_id,)):
         return student_id
     return None
@@ -967,7 +984,7 @@ def supply_vote(supply_id):
 
 
 @app.route("/export/supplies.csv")
-@admin_required
+@staff_required
 def export_supplies():
     def names_for(column):
         rows = db.query(

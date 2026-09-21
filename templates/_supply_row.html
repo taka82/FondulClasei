@@ -7,7 +7,7 @@
   <td class="num"><strong class="order">{{ s['chosen'] }}</strong>{% if total %} <span class="muted small">din {{ total }}</span>{% endif %}</td>
   <td class="num cnt-paid">{{ s['paid'] }}</td>
   <td class="num cnt-received">{{ s['received'] }}</td>
-  {% if not is_admin %}
+  {% if not is_staff %}
   <td>
     {% set m = mine.get(s['id']) %}
     <span class="myrow">

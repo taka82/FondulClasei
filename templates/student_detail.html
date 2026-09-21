@@ -2,7 +2,7 @@
 {% from "_macros.html" import status, delete_button %}
 {% block title %}{{ student['name'] }}{% endblock %}
 {% block content %}
-{% if is_admin %}<p class="crumb"><a href="{{ url_for('students') }}">← Elevi</a></p>{% endif %}
+{% if is_staff %}<p class="crumb"><a href="{{ url_for('students') }}">← Elevi</a></p>{% endif %}
 <h1>{{ student['name'] }} {% if not student['active'] %}<span class="badge">inactiv</span>{% endif %}</h1>
 
 {% set supplies_card %}
@@ -28,13 +28,13 @@
     <a href="{{ url_for('supplies') }}">Vezi lista de rechizite</a>.</p>
 </section>
 {% endset %}
-{% if not is_admin %}{{ supplies_card }}
+{% if not is_staff %}{{ supplies_card }}
 {% endif %}
 <section class="card">
   <h2>Contribuții</h2>
   {% if rows %}
   <div class="scroll"><table>
-    <thead><tr><th>Contribuție</th><th>Termen</th><th class="num">De plătit</th><th class="num">Plătit</th><th class="num">Rest</th><th>Stare</th>{% if is_admin %}<th>Adaugă plată</th>{% endif %}</tr></thead>
+    <thead><tr><th>Contribuție</th><th>Termen</th><th class="num">De plătit</th><th class="num">Plătit</th><th class="num">Rest</th><th>Stare</th>{% if is_staff %}<th>Adaugă plată</th>{% endif %}</tr></thead>
     {% for r in rows %}
     <tr>
       <td>{{ r['name'] }}</td>
@@ -43,7 +43,7 @@
       <td class="num">{{ r['paid']|money }}</td>
       <td class="num {{ 'owed' if r['paid'] < r['amount'] }}">{{ ([r['amount'] - r['paid'], 0]|max)|money }}</td>
       <td>{{ status(r['paid'], r['amount']) }}</td>
-      {% if is_admin %}
+      {% if is_staff %}
       <td>
         {% if r['paid'] < r['amount'] %}
         <form method="post" action="{{ url_for('payment_add') }}" class="quickpay">
@@ -66,20 +66,20 @@
   {% endif %}
 </section>
 
-{% if is_admin %}{{ supplies_card }}
+{% if is_staff %}{{ supplies_card }}
 {% endif %}
 <section class="card">
   <h2>Istoric plăți</h2>
   {% if payments %}
   <div class="scroll"><table>
-    <thead><tr><th>Data</th><th>Contribuție</th><th class="num">Suma</th><th>Observații</th>{% if is_admin %}<th></th>{% endif %}</tr></thead>
+    <thead><tr><th>Data</th><th>Contribuție</th><th class="num">Suma</th><th>Observații</th>{% if is_staff %}<th></th>{% endif %}</tr></thead>
     {% for p in payments %}
     <tr>
       <td class="nowrap">{{ p['paid_on']|ro_date }}</td>
       <td>{{ p['contribution'] }}</td>
       <td class="num">{{ p['amount']|money }}</td>
       <td class="muted">{{ p['note'] }}</td>
-      {% if is_admin %}<td class="actions">{{ delete_button(url_for('payment_delete', payment_id=p['id']), request.path, 'Ștergi această plată?') }}</td>{% endif %}
+      {% if is_staff %}<td class="actions">{{ delete_button(url_for('payment_delete', payment_id=p['id']), request.path, 'Ștergi această plată?') }}</td>{% endif %}
     </tr>
     {% endfor %}
   </table></div>
@@ -88,7 +88,7 @@
   {% endif %}
 </section>
 
-{% if is_admin %}
+{% if is_staff %}
 <section class="card">
   <h2>Setări elev</h2>
   <form method="post" action="{{ url_for('student_edit', student_id=student['id']) }}" class="inlineform">

@@ -32,7 +32,7 @@ cd ~/fond
 python3.12 create_admin.py
 ```
 
-Scriptul cere utilizatorul, numele clasei și parola (nu se vede la tastare) și creează contul de **casier**. Pe server, pagina `/setup` din browser e dezactivată intenționat: altfel primul vizitator care ar găsi adresa ar putea crea el contul.
+Scriptul cere utilizatorul, numele clasei și parola (nu se vede la tastare) și creează contul de **administrator** (poate face orice). Pe server, pagina `/setup` din browser e dezactivată intenționat: altfel primul vizitator care ar găsi adresa ar putea crea el contul.
 
 Dacă apare `ModuleNotFoundError: flask`, rulează `python3.12 -m pip install --user -r requirements.txt` și repetă comanda.
 
@@ -48,14 +48,14 @@ Dacă apare `ModuleNotFoundError: flask`, rulează `python3.12 -m pip install --
    Salvează (**Save**).
 3. La **Static files** adaugă: URL `/static/` → Directory `/home/UTILIZATOR/fond/static`.
 4. La **Security** pornește **Force HTTPS**.
-5. Apasă butonul verde **Reload**, apoi deschide `https://UTILIZATOR.eu.pythonanywhere.com`. Ar trebui să vezi pagina de autentificare. Intră cu contul de casier.
+5. Apasă butonul verde **Reload**, apoi deschide `https://UTILIZATOR.eu.pythonanywhere.com`. Ar trebui să vezi pagina de autentificare. Intră cu contul de administrator.
 
 Dacă vezi o eroare, deschide **Error log** (link în tab-ul Web); ultimele linii spun ce lipsește.
 
-## 5. Configurează clasa (din browser, ca casier)
+## 5. Configurează clasa (din browser, ca administrator)
 
 1. **Elevi** → lipește lista clasei (un nume pe rând). Numele copiilor se introduc doar aici: nu intră în git.
-2. **Conturi** → creează câte un cont de părinte, legat de elev. Trimite fiecărui părinte adresa, utilizatorul și parola inițială, pe un canal privat (nu în grupul clasei), cu rugămintea să o schimbe la prima intrare.
+2. **Conturi** → creează, dacă vrei, un cont de **casier** (bani și rechizite, fără conturi și setări) și câte un cont de părinte, legat de elev. Trimite fiecărui părinte adresa, utilizatorul și parola inițială, pe un canal privat (nu în grupul clasei), cu rugămintea să o schimbe la prima intrare.
 3. **Contribuții** și **Rechizite** → adaugă ce ai de colectat.
 
 ## 6. Copii de siguranță zilnice
@@ -84,7 +84,7 @@ La fiecare **3 luni**, în tab-ul Web apasă butonul **Run until 3 months from t
 
 ## Dacă un părinte uită parola
 
-Casierul o schimbă din **Conturi** (coloana „Parolă nouă”). Dacă **tu, casierul,** ai uitat-o, în consola Bash:
+Administratorul o schimbă din **Conturi** (coloana „Parolă nouă”). Casierii și părinții nu pot schimba parolele altora. Dacă **tu, administratorul,** ai uitat-o, în consola Bash:
 
 ```
 cd ~/fond && python3.12 create_admin.py --reset NUMELE_TAU

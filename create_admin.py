@@ -1,8 +1,8 @@
-"""Creeaza sau reseteaza un cont de casier din consola.
+"""Creeaza un cont de administrator sau reseteaza parola unui cont din consola.
 
-Pe un server public pagina /setup este dezactivata, deci contul de casier se creeaza asa:
+Pe un server public pagina /setup este dezactivata, deci contul de administrator se creeaza asa:
 
-    python3 create_admin.py                  # cont nou de casier (cere utilizator si parola)
+    python3 create_admin.py                  # cont nou de administrator (cere utilizator si parola)
     python3 create_admin.py --reset NUME     # schimba parola unui cont existent (ex: ai uitat-o)
 
 Foloseste aceeasi versiune de Python ca aplicatia web (ex: python3.12).
@@ -48,7 +48,7 @@ def ask_password():
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Creează sau resetează un cont de casier.")
+    parser = argparse.ArgumentParser(description="Creează un cont de administrator sau resetează parola unui cont.")
     parser.add_argument("--reset", metavar="NUME", help="schimbă parola contului existent NUME")
     args = parser.parse_args()
     try:
@@ -59,7 +59,7 @@ def main():
             username = input("Utilizator (3-32 caractere: litere, cifre, . _ -): ").strip()
             class_name = input("Numele clasei (ex: Clasa a V-a; Enter = lasă neschimbat): ").strip() or None
             create_admin(username, ask_password(), class_name)
-            print(f"Contul de casier „{username}” a fost creat. Te poți autentifica pe site.")
+            print(f"Contul de administrator „{username}” a fost creat. Te poți autentifica pe site.")
     except ValueError as e:
         sys.exit(f"Eroare: {e}")
 

@@ -31,7 +31,7 @@ def main():
     # fara utilizatori -> setup
     assert admin.get("/").headers["Location"].endswith("/setup")
     r = post(admin, "/setup", {"username": "casier", "password": "parola123", "class_name": "IX B"}, page="/setup")
-    assert "Cont de casier creat" in r.get_data(as_text=True)
+    assert "Cont de administrator creat" in r.get_data(as_text=True)
     assert admin.get("/setup").status_code == 302  # setup se inchide dupa primul cont
 
     # CSRF lipsa -> 400
@@ -295,6 +295,52 @@ def main():
     body = r.get_data(as_text=True)
     assert "Rechizit șters" in body and 'class="item-name" href="/supplies/1"' not in body
     assert sql("SELECT COUNT(*) FROM supply_tracking WHERE supply_id = 1") == [(0,)]
+
+    # --- roluri: administrator (orice), casier (bani si rechizite, fara conturi/setari), parinte
+    r = post(admin, "/users", {"role": "casier", "username": "casier1", "password": "parola123"}, page="/users")
+    assert "Cont creat" in r.get_data(as_text=True)
+    users_page = admin.get("/users").get_data(as_text=True)
+    assert "Administrator" in users_page and "Casier" in users_page and "Părinte" in users_page
+    assert sql("SELECT role, student_id FROM users WHERE username = 'casier1'") == [("casier", None)]
+    cas = fond.app.test_client()
+    post(cas, "/login", {"username": "casier1", "password": "parola123"})
+    cas_home = cas.get("/").get_data(as_text=True)
+    assert "Ultimele plăți" in cas_home and "Rechizite:" in cas_home, "casierul are panoul complet"
+    assert menu(cas.get("/").get_data(as_text=True)) == ["Panou", "Elevi", "Contribuții", "Rechizite", "Cheltuieli"]
+    for url in ("/students", "/students/1", "/contributions", "/contributions/1", "/expenses", "/supplies", "/supplies/3",
+                "/export/payments.csv", "/export/expenses.csv", "/export/restante.csv", "/export/supplies.csv"):
+        assert cas.get(url).status_code == 200, url
+    # ce face casierul: plati, cheltuieli, bife (inclusiv Platit)
+    r = post(cas, "/payments", {"student_id": "3", "contribution_id": "1", "amount": "10", "paid_on": "2026-09-22",
+                                "next": "/contributions/1"}, page="/contributions/1")
+    assert "Plată înregistrată" in r.get_data(as_text=True)
+    r = post(cas, "/expenses", {"spent_on": "2026-09-22", "category": "Materiale", "amount": "5"}, page="/expenses")
+    assert "Cheltuială înregistrată" in r.get_data(as_text=True)
+    assert ajax(cas, "/supplies/3/track", {"student_id": "3", "chosen": "1", "paid": "1"}, page="/supplies/3").status_code == 200
+    assert tracked(3, 3) == [(1, 1, 0)], "casierul poate bifa Platit"
+    assert "Rechizit adăugat" in post(cas, "/supplies", {"name": "Radiera"}, page="/supplies").get_data(as_text=True)
+    # ce NU face casierul: conturi si setari
+    for url in ("/users", "/settings"):
+        assert cas.get(url).status_code == 403, url
+    for url, data in (("/users", {"role": "admin", "username": "hacker1", "password": "parola123"}),
+                      ("/users/1/password", {"password": "parola-noua-1"}), ("/users/1/delete", {}),
+                      ("/settings", {"class_name": "X", "opening_balance": "999"})):
+        assert cas.post(url, data={**data, "csrf": token(cas, "/supplies")}).status_code == 403, url
+    assert sql("SELECT COUNT(*) FROM users WHERE username = 'hacker1'") == [(0,)]
+    assert vote(cas, 3, "chosen", "1").status_code == 403, "casierul nu are elev asociat, nu voteaza ca parinte"
+    # administratorul poate orice: creeaza alt administrator, care are acces la Conturi si Setari
+    r = post(admin, "/users", {"role": "admin", "username": "admin2", "password": "parola123"}, page="/users")
+    assert "Cont creat" in r.get_data(as_text=True)
+    adm2 = fond.app.test_client()
+    post(adm2, "/login", {"username": "admin2", "password": "parola123"})
+    assert adm2.get("/users").status_code == 200 and adm2.get("/settings").status_code == 200
+    assert menu(adm2.get("/").get_data(as_text=True)) == ["Panou", "Elevi", "Contribuții", "Rechizite", "Cheltuieli", "Conturi", "Setări"]
+    # parintele nu are acces la conturi/setari
+    assert parent.get("/users").status_code == 403 and parent.get("/settings").status_code == 403
+    # ultimul administrator nu se poate sterge (nici de el insusi)
+    post(admin, "/users/%s/delete" % sql("SELECT id FROM users WHERE username = 'admin2'")[0][0], {}, page="/users")
+    r = post(admin, "/users/1/delete", {}, page="/users")
+    assert "ultimul cont de administrator" in r.get_data(as_text=True)
 
     # neautentificat
     anon = fond.app.test_client()

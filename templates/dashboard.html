@@ -16,7 +16,7 @@
   <p class="muted small">Soldul include {{ opening|money }} raportați din anul anterior.</p>
 {% endif %}
 
-{% if is_admin and supply_stats.total %}
+{% if is_staff and supply_stats.total %}
 <div class="card">
   <strong>Rechizite:</strong>
   {{ supply_stats.de_comandat }} bucăți de comandat (după voturi), la {{ supply_stats.cu_voturi }} din {{ supply_stats.total }} rechizite ·
@@ -68,7 +68,7 @@
   </section>
 </div>
 
-{% if is_admin %}
+{% if is_staff %}
 <section class="card">
   <h2>Ultimele plăți</h2>
   {% if recent_payments %}

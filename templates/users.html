@@ -3,7 +3,11 @@
 {% block title %}Conturi{% endblock %}
 {% block content %}
 <h1>Conturi</h1>
-<p class="muted">Părinții văd soldul și cheltuielile clasei, plus situația plăților propriului copil. Nu pot modifica nimic.</p>
+<ul class="muted small roles">
+  <li><strong>Administrator</strong>: poate face orice, inclusiv conturi și setări.</li>
+  <li><strong>Casier</strong>: elevi, contribuții, plăți, cheltuieli, rechizite și bife; nu vede Conturi și Setări.</li>
+  <li><strong>Părinte</strong>: vede soldul, cheltuielile și rechizitele clasei, plus situația propriului copil; poate bifa „Ales” și „Primit” pentru copilul lui.</li>
+</ul>
 
 <div class="grid2 wide-first">
   <section class="card">
@@ -12,7 +16,7 @@
       {% for u in users %}
       <tr>
         <td>{{ u['username'] }}</td>
-        <td>{{ 'Casier' if u['role'] == 'admin' else 'Părinte' }}</td>
+        <td>{{ {'admin': 'Administrator', 'casier': 'Casier', 'parent': 'Părinte'}[u['role']] }}</td>
         <td>{{ u['student'] or '' }}</td>
         <td>
           <form method="post" action="{{ url_for('user_password', user_id=u['id']) }}" class="quickpay">
@@ -35,8 +39,9 @@
       <input type="hidden" name="csrf" value="{{ csrf_token() }}">
       <label>Rol
         <select name="role" id="role">
-          <option value="parent">Părinte (doar citire)</option>
-          <option value="admin">Casier (poate edita)</option>
+          <option value="parent">Părinte (vede și bifează pentru copilul lui)</option>
+          <option value="casier">Casier (bani și rechizite, fără conturi)</option>
+          <option value="admin">Administrator (poate face orice)</option>
         </select>
       </label>
       <label id="student-row">Elev asociat

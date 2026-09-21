@@ -18,7 +18,7 @@ python -m venv .venv
 .venv\Scripts\python.exe app.py
 ```
 
-Deschide http://127.0.0.1:5000. La prima pornire (local) se cere crearea contului de casier.
+Deschide http://127.0.0.1:5000. La prima pornire (local) se cere crearea contului de administrator.
 
 **Pentru acces de oriunde** (părinții de pe telefon, de acasă) aplicația se pune online: vezi **[DEPLOY.md](DEPLOY.md)**, ghid pas cu pas pentru PythonAnywhere. Pe server, contul de casier se creează din consolă cu `create_admin.py`, iar pagina `/setup` din browser e dezactivată.
 
@@ -30,7 +30,8 @@ Variabile opționale: `FOND_HOST`, `FOND_PORT`, `FOND_DB` (calea fișierului SQL
 
 | Rol | Poate |
 |---|---|
-| **Casier** | Tot: elevi, contribuții, plăți, cheltuieli, conturi, setări, exporturi |
+| **Administrator** | Tot, inclusiv **Conturi** (creează/șterge conturi, resetează parole) și **Setări** |
+| **Casier** | Tot ce ține de bani și rechizite: elevi, contribuții, plăți, cheltuieli, rechizite (inclusiv „Plătit”), exporturi. **Nu** vede Conturi și Setări |
 | **Părinte** | Citire: soldul, cheltuielile clasei și situația plăților propriului copil. La Rechizite poate bifa „Ales” și „Primit” pentru copilul lui (nu și „Plătit”) |
 
 Părinții nu văd plățile altor elevi.
@@ -41,7 +42,7 @@ Părinții nu văd plățile altor elevi.
 2. **Contribuții** → creează „Fond septembrie”, „Excursie” etc. cu suma per elev.
 3. Deschide o contribuție și apasă **Plătit** în dreptul elevului (sau modifică suma pentru plăți parțiale).
 4. **Cheltuieli** → înregistrează ce s-a cheltuit, cu categorie.
-5. **Conturi** → creează conturi de părinte, legate de un elev.
+5. **Conturi** (doar administratorul) → creează conturi de părinte (legate de un elev), de casier sau de administrator.
 6. **Setări** → numele clasei și soldul reportat din anul anterior.
 
 ### Rechizite
@@ -58,7 +59,7 @@ Pagina **Rechizite** ține lista de rechizite ale clasei (denumire, categorie, o
 
 | | Ales | Plătit | Primit |
 |---|---|---|---|
-| **Casier** (administrator) | da, pentru orice elev | da | da |
+| **Administrator / Casier** | da, pentru orice elev | da | da |
 | **Părinte** | da, **doar pentru copilul lui** | nu | da, **doar pentru copilul lui** |
 
 Părintele bifează „Ales” (vrea rechizitul) și „Primit” (l-a primit) direct din lista de rechizite sau din pagina rechizitului, iar bifele se salvează imediat. „Plătit” îl bifează doar casierul. Cât timp rechizitul e plătit sau primit, părintele nu poate retrage votul „Ales” (dacă „Primit” l-a bifat el, îl debifează întâi; dacă e plătit, discută cu casierul). Elevul se stabilește din contul părintelui, nu din cerere, așa că nu se poate vota pentru alt copil. La nivel de elev, părinții văd **doar bifele copilului lor**, plus totalurile (câți au votat, plătit, primit).

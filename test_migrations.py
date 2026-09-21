@@ -144,6 +144,48 @@ def main():
     assert conn.execute("SELECT name FROM students").fetchall() == [("Popescu Ana",)]
     conn.close()
 
+    # 9) migrarea 0003 (roluri): pe o baza cu utilizatori si date legate de ei nu se pierde nimic
+    v2 = work / "v2" / "fond.db"
+    v2.parent.mkdir()
+    only12 = work / "only12"
+    only12.mkdir()
+    for name in ("0001_initial.sql", "0002_rechizite.sql"):
+        shutil.copy(db.MIGRATIONS_DIR / name, only12)
+    db.migrate(v2, only12)
+    assert version(v2) == 2
+    conn = sqlite3.connect(v2)
+    conn.executescript("""
+        INSERT INTO students(id, name) VALUES (1, 'Popescu Ana');
+        INSERT INTO users(id, username, password_hash, role, student_id) VALUES
+            (1, 'casier', 'hash-admin', 'admin', NULL), (2, 'parinte', 'hash-parent', 'parent', 1);
+        INSERT INTO contributions(id, name, amount) VALUES (1, 'Fond', 5000);
+        INSERT INTO payments(student_id, contribution_id, amount, paid_on, created_by) VALUES (1, 1, 5000, '2026-09-01', 1);
+        INSERT INTO expenses(spent_on, category, amount, created_by) VALUES ('2026-09-02', 'Cadouri', 1000, 1);
+    """)
+    conn.commit()
+    conn.close()
+    db.migrate(v2)                       # aplica 0003 (si orice migrare ulterioara)
+    assert version(v2) == latest
+    conn = sqlite3.connect(v2)
+    assert conn.execute("SELECT id, username, password_hash, role, student_id FROM users ORDER BY id").fetchall() == [
+        (1, "casier", "hash-admin", "admin", None), (2, "parinte", "hash-parent", "parent", 1)], "utilizatorii raman neschimbati"
+    assert conn.execute("SELECT created_by FROM payments").fetchall() == [(1,)]
+    assert conn.execute("SELECT created_by FROM expenses").fetchall() == [(1,)]
+    assert conn.execute("PRAGMA foreign_key_check").fetchall() == []
+    assert conn.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
+    conn.execute("INSERT INTO users(username, password_hash, role) VALUES ('casier2', 'h', 'casier')")   # rol nou permis
+    try:
+        conn.execute("INSERT INTO users(username, password_hash, role) VALUES ('x', 'h', 'zeu')")
+        raise AssertionError("un rol necunoscut trebuia refuzat")
+    except sqlite3.IntegrityError:
+        pass
+    try:
+        conn.execute("INSERT INTO users(username, password_hash, role) VALUES ('CASIER', 'h', 'casier')")
+        raise AssertionError("numele de utilizator ramane unic, fara diferenta majuscule")
+    except sqlite3.IntegrityError:
+        pass
+    conn.close()
+
     print("OK - migrarile functioneaza")
 
 

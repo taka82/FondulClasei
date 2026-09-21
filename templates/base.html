@@ -29,15 +29,17 @@
 {% if user %}
 <nav class="mainnav" aria-label="Meniu principal">
   <div class="wrap navlinks">
-    {% if is_admin %}
-      {# casier: Panou | Elevi | Contribuții | Rechizite | Cheltuieli | Conturi | Setări #}
+    {% if is_staff %}
+      {# administrator: Panou | Elevi | Contribuții | Rechizite | Cheltuieli | Conturi | Setări; casier: la fel, fără Conturi și Setări #}
       <a href="{{ url_for('dashboard') }}" {% if request.endpoint == 'dashboard' %}class="on"{% endif %}>Panou</a>
       <a href="{{ url_for('students') }}" {% if request.endpoint and request.endpoint.startswith('student') %}class="on"{% endif %}>Elevi</a>
       <a href="{{ url_for('contributions') }}" {% if request.endpoint and request.endpoint.startswith('contribution') %}class="on"{% endif %}>Contribuții</a>
       <a href="{{ url_for('supplies') }}" {% if request.endpoint and request.endpoint.startswith('suppl') %}class="on"{% endif %}>Rechizite</a>
       <a href="{{ url_for('expenses') }}" {% if request.endpoint and request.endpoint.startswith('expense') %}class="on"{% endif %}>Cheltuieli</a>
-      <a href="{{ url_for('users') }}" {% if request.endpoint == 'users' %}class="on"{% endif %}>Conturi</a>
-      <a href="{{ url_for('settings') }}" {% if request.endpoint == 'settings' %}class="on"{% endif %}>Setări</a>
+      {% if is_admin %}
+        <a href="{{ url_for('users') }}" {% if request.endpoint == 'users' %}class="on"{% endif %}>Conturi</a>
+        <a href="{{ url_for('settings') }}" {% if request.endpoint == 'settings' %}class="on"{% endif %}>Setări</a>
+      {% endif %}
     {% else %}
       {# părinte: Situația mea | Rechizite | Cheltuieli | Panou #}
       {% if user['student_id'] %}
