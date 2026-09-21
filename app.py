@@ -1,6 +1,7 @@
 import csv
 import hmac
 import io
+import json
 import os
 import re
 import secrets
@@ -10,8 +11,8 @@ from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from functools import wraps
 from pathlib import Path
 
-from flask import (Flask, Response, abort, flash, g, redirect, render_template,
-                   request, session, url_for)
+from flask import (Flask, Response, abort, flash, g, make_response, redirect,
+                   render_template, request, session, url_for)
 from werkzeug.security import check_password_hash, generate_password_hash
 
 import db
@@ -904,8 +905,10 @@ def supply_adjust(supply_id):
         bought = min(qty, max(0, bought + delta))
     db.execute("UPDATE supplies SET qty = ?, bought = ? WHERE id = ?", (qty, bought, supply_id))
     if wants_fragment():
-        return render_template("_supply_row.html", s=supply_or_404(supply_id), mine=my_tracking(),
-                               total=active_student_count())
+        resp = make_response(render_template("_supply_row.html", s=supply_or_404(supply_id), mine=my_tracking(),
+                                             total=active_student_count()))
+        resp.headers["X-Supply-Stats"] = json.dumps(supply_stats())  # ca sa se actualizeze si cifrele de sus
+        return resp
     return redirect(safe_next(request.form.get("next")) or url_for("supplies"))
 
 

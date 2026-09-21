@@ -2,6 +2,7 @@
 
 Rulare: .venv\\Scripts\\python.exe test_app.py
 """
+import json
 import os
 import re
 import tempfile
@@ -130,6 +131,9 @@ def main():
     # statusuri: 0 cumparate = De cumparat, toate = Cumparat, intre = Partial
     r = ajax(admin, "/supplies/1/adjust", {"field": "bought", "delta": "1"}).get_data(as_text=True)
     assert "Parțial" in r and r.lstrip().startswith("<tr"), "raspunsul AJAX trebuie sa fie randul actualizat"
+    resp = ajax(admin, "/supplies/1/adjust", {"field": "bought", "delta": "-1"})
+    assert json.loads(resp.headers["X-Supply-Stats"]) == {"total": 3, "necesar": 2, "partial": 0, "cumparat": 1}
+    ajax(admin, "/supplies/1/adjust", {"field": "bought", "delta": "1"})  # inapoi la 1 cumparat
     for _ in range(5):
         r = ajax(admin, "/supplies/1/adjust", {"field": "bought", "delta": "1"}).get_data(as_text=True)
     assert "Cumpărat" in r and 'class="qty-num">3<' in r, "cumparat nu poate depasi cantitatea"

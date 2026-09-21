@@ -63,9 +63,11 @@
     if (!box) return;
     const form = box.closest('form');
     const inputs = form.querySelectorAll('input[type=checkbox]');
+    // citim valorile INAINTE de dezactivare: campurile dezactivate nu se trimit in formular
+    const body = new FormData(form);
     inputs.forEach(i => i.disabled = true);
     try {
-      const res = await fetch(form.action, { method: 'POST', body: new FormData(form),
+      const res = await fetch(form.action, { method: 'POST', body,
                                              headers: { 'X-Requested-With': 'fetch' } });
       if (!res.ok) throw new Error(res.status);
       const counts = await res.json();

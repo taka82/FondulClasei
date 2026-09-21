@@ -9,10 +9,10 @@
 <h1>Rechizite</h1>
 
 <section class="stats">
-  <div class="stat main"><span class="label">Total rechizite</span><span class="value">{{ stats.total }}</span></div>
-  <div class="stat"><span class="label">De cumpărat</span><span class="value">{{ stats.necesar }}</span></div>
-  <div class="stat"><span class="label">Parțial</span><span class="value">{{ stats.partial }}</span></div>
-  <div class="stat"><span class="label">Cumpărate</span><span class="value">{{ stats.cumparat }}</span></div>
+  <div class="stat main"><span class="label">Total rechizite</span><span class="value" id="stat-total">{{ stats.total }}</span></div>
+  <div class="stat"><span class="label">De cumpărat</span><span class="value" id="stat-necesar">{{ stats.necesar }}</span></div>
+  <div class="stat"><span class="label">Parțial</span><span class="value" id="stat-partial">{{ stats.partial }}</span></div>
+  <div class="stat"><span class="label">Cumpărate</span><span class="value" id="stat-cumparat">{{ stats.cumparat }}</span></div>
 </section>
 
 <form method="get" class="toolbar">
@@ -80,7 +80,12 @@
       const res = await fetch(form.action, { method: 'POST', body: new FormData(form),
                                              headers: { 'X-Requested-With': 'fetch' } });
       if (!res.ok) throw new Error(res.status);
+      const stats = JSON.parse(res.headers.get('X-Supply-Stats') || '{}');
       row.outerHTML = (await res.text()).trim();
+      for (const k in stats) {
+        const el = document.getElementById('stat-' + k);
+        if (el) el.textContent = stats[k];
+      }
     } catch (err) {
       row.classList.remove('busy');
       alert('Nu s-a putut salva. Reîncarcă pagina și încearcă din nou.');
