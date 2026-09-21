@@ -190,7 +190,7 @@ def main():
     assert re.search(r'class="ck paid" disabled', pd), "Plătit ramane dezactivat pentru parinte"
     pl = parent.get("/supplies").get_data(as_text=True)
     assert "Copilul meu" in pl and row(pl, "Caiet dictando") and 'class="order">2<' in pl
-    assert "Rechizite:" in parent.get("/").get_data(as_text=True)
+    assert "Rechizite:" not in parent.get("/").get_data(as_text=True), "cardul cu bucati de comandat e doar pentru casier"
     for url, data in (("/supplies", {"name": "X"}), ("/supplies/1/track", {"student_id": "1", "chosen": "1"}),
                       ("/supplies/1/edit", {"name": "X"}), ("/supplies/1/delete", {})):
         assert parent.post(url, data={**data, "csrf": token(parent, "/supplies")}).status_code == 403, url
