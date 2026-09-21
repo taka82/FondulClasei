@@ -9,7 +9,7 @@
 <body>
 {% if user %}
 <header class="topbar">
-  <div class="wrap bar">
+  <div class="wrap topbar-inner">
     <a class="brand" href="{{ url_for('dashboard') }}">{{ class_name }}</a>
     <nav>
       <a href="{{ url_for('dashboard') }}" {% if request.endpoint == 'dashboard' %}class="on"{% endif %}>Panou</a>
@@ -19,6 +19,7 @@
       {% elif user['student_id'] %}
         <a href="{{ url_for('me') }}" {% if request.endpoint == 'student_detail' %}class="on"{% endif %}>Situația mea</a>
       {% endif %}
+      <a href="{{ url_for('supplies') }}" {% if request.endpoint and request.endpoint.startswith('suppl') %}class="on"{% endif %}>Rechizite</a>
       <a href="{{ url_for('expenses') }}" {% if request.endpoint and request.endpoint.startswith('expense') %}class="on"{% endif %}>Cheltuieli</a>
       {% if is_admin %}
         <a href="{{ url_for('users') }}" {% if request.endpoint == 'users' %}class="on"{% endif %}>Conturi</a>

@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Rechizite{% endblock %}
+{% macro sort_th(col, label) %}
+  {% set nxt = 'desc' if sort == col and direction == 'asc' else 'asc' %}
+  <th><a class="sortlink {{ 'on' if sort == col }}"
+         href="{{ url_for('supplies', q=q, cat=cat, status=status, sort=col, dir=nxt) }}">{{ label }}{% if sort == col %} {{ '▲' if direction == 'asc' else '▼' }}{% endif %}</a></th>
+{% endmacro %}
+{% block content %}
+<h1>Rechizite</h1>
+
+<section class="stats">
+  <div class="stat main"><span class="label">Total rechizite</span><span class="value">{{ stats.total }}</span></div>
+  <div class="stat"><span class="label">De cumpărat</span><span class="value">{{ stats.necesar }}</span></div>
+  <div class="stat"><span class="label">Parțial</span><span class="value">{{ stats.partial }}</span></div>
+  <div class="stat"><span class="label">Cumpărate</span><span class="value">{{ stats.cumparat }}</span></div>
+</section>
+
+<form method="get" class="toolbar">
+  <input type="search" name="q" value="{{ q }}" placeholder="Caută rechizite..." aria-label="Caută">
+  <select name="cat" aria-label="Categorie" onchange="this.form.submit()">
+    <option value="">Toate categoriile</option>
+    {% for c in categories %}<option value="{{ c }}" {{ 'selected' if c == cat }}>{{ c }}</option>{% endfor %}
+  </select>
+  <select name="status" aria-label="Status" onchange="this.form.submit()">
+    <option value="">Toate statusurile</option>
+    {% for key, info in SUPPLY_STATUS.items() %}<option value="{{ key }}" {{ 'selected' if key == status }}>{{ info[0] }}</option>{% endfor %}
+  </select>
+  <input type="hidden" name="sort" value="{{ sort }}"><input type="hidden" name="dir" value="{{ direction }}">
+  <button class="btn small secondary">Filtrează</button>
+  {% if is_admin %}<a class="btn small secondary" href="{{ url_for('export_supplies') }}">Export CSV</a>{% endif %}
+</form>
+
+{% if is_admin %}
+<details class="card" {{ 'open' if not stats.total }}>
+  <summary><strong>+ Adaugă rechizit</strong></summary>
+  <form method="post" class="addgrid">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <label>Denumire * <input name="name" required maxlength="100" placeholder="ex: Caiet dictando A5"></label>
+    <label>Categorie
+      <input name="category" list="supply-cats" maxlength="50" placeholder="ex: Caiete">
+      <datalist id="supply-cats">{% for c in categories %}<option value="{{ c }}">{% endfor %}</datalist>
+    </label>
+    <label>Cantitate <input name="qty" type="number" min="1" value="{{ total or 1 }}"></label>
+    <label>Cumpărat <input name="bought" type="number" min="0" value="0"></label>
+    <label class="span2">Observații <input name="note" maxlength="300" placeholder="ex: cu liniatură tip II"></label>
+    <button class="btn">Adaugă</button>
+  </form>
+</details>
+{% endif %}
+
+<section class="card">
+  {% if supplies %}
+  <div class="scroll"><table id="supplies-table">
+    <thead><tr>
+      {{ sort_th('name', 'Rechizit') }}{{ sort_th('cat', 'Categorie') }}{{ sort_th('qty', 'Cantitate') }}
+      <th>Cumpărat</th>{{ sort_th('status', 'Status') }}<th>Elevi</th>
+      <th>{{ 'Acțiuni' if is_admin else 'Copilul meu' }}</th>
+    </tr></thead>
+    <tbody>
+      {% for s in supplies %}{% include "_supply_row.html" %}{% endfor %}
+    </tbody>
+  </table></div>
+  <p class="muted small">Elevi: câți au ales rechizitul din total, iar bara arată câți l-au primit.</p>
+  {% elif stats.total %}
+    <p class="muted">Niciun rechizit nu se potrivește filtrelor.</p>
+  {% else %}
+    <p class="muted">Nu există rechizite încă.{% if is_admin %} Adaugă primul rechizit mai sus.{% endif %}</p>
+  {% endif %}
+</section>
+
+<script>
+  // butoanele - / + se aplica fara reincarcarea paginii; fara JS merg ca formulare obisnuite
+  document.addEventListener('submit', async (e) => {
+    const form = e.target.closest('form.ajax');
+    if (!form) return;
+    e.preventDefault();
+    const row = form.closest('tr');
+    row.classList.add('busy');
+    try {
+      const res = await fetch(form.action, { method: 'POST', body: new FormData(form),
+                                             headers: { 'X-Requested-With': 'fetch' } });
+      if (!res.ok) throw new Error(res.status);
+      row.outerHTML = (await res.text()).trim();
+    } catch (err) {
+      row.classList.remove('busy');
+      alert('Nu s-a putut salva. Reîncarcă pagina și încearcă din nou.');
+    }
+  });
+</script>
+{% endblock %}

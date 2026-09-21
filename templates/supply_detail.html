@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}{{ supply['name'] }}{% endblock %}
+{% block content %}
+<p class="crumb"><a href="{{ url_for('supplies') }}">← Rechizite</a></p>
+<h1>{{ supply['name'] }}</h1>
+{% set st = supply_status(supply['bought'], supply['qty']) %}
+<p class="muted">
+  <span class="tag">{{ supply['category'] }}</span>
+  · cumpărat {{ supply['bought'] }} din {{ supply['qty'] }}
+  <span class="badge {{ SUPPLY_STATUS[st][1] }}">{{ SUPPLY_STATUS[st][0] }}</span>
+  {% if supply['note'] %}· {{ supply['note'] }}{% endif %}
+</p>
+
+<section class="card">
+  <p class="legend">
+    <span><i class="dot chosen"></i> <strong>Ales</strong> – elevul s-a oferit să cumpere</span>
+    <span><i class="dot paid"></i> <strong>Plătit</strong> – a achitat suma</span>
+    <span><i class="dot received"></i> <strong>Primit</strong> – rechizitul a ajuns la elev</span>
+  </p>
+  <p class="totals">
+    Ales: <strong id="c-chosen">{{ supply['chosen'] }}</strong> ·
+    Plătit: <strong id="c-paid">{{ supply['paid'] }}</strong> ·
+    Primit: <strong id="c-received">{{ supply['received'] }}</strong>
+    <span class="muted">din {{ total }} elevi</span>
+  </p>
+  {% if not is_admin %}<p class="muted small">Vezi doar situația copilului tău.</p>{% endif %}
+
+  <div class="scroll"><table class="track">
+    <thead><tr><th>#</th><th>Elev</th><th class="c">Ales</th><th class="c">Plătit</th><th class="c">Primit</th></tr></thead>
+    {% for r in rows %}
+    <tr class="{{ 'dim' if not r['active'] }}">
+      <td class="muted small">{{ loop.index }}</td>
+      <td><span class="avatar">{{ r['name']|initials }}</span> <strong>{{ r['name'] }}</strong>
+          {% if not r['active'] %}<span class="badge">inactiv</span>{% endif %}</td>
+      {% if is_admin %}
+      <td colspan="3" class="trackcell">
+        <form method="post" action="{{ url_for('supply_track', supply_id=supply['id']) }}" class="track-form">
+          <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+          <input type="hidden" name="student_id" value="{{ r['id'] }}">
+          <span class="c"><input type="checkbox" class="ck chosen" name="chosen" value="1" aria-label="Ales" {{ 'checked' if r['chosen'] }}></span>
+          <span class="c"><input type="checkbox" class="ck paid" name="paid" value="1" aria-label="Plătit" {{ 'checked' if r['paid'] }}></span>
+          <span class="c"><input type="checkbox" class="ck received" name="received" value="1" aria-label="Primit" {{ 'checked' if r['received'] }}></span>
+          <noscript><button class="btn small">Salvează</button></noscript>
+        </form>
+      </td>
+      {% else %}
+      <td class="c"><input type="checkbox" class="ck chosen" disabled aria-label="Ales" {{ 'checked' if r['chosen'] }}></td>
+      <td class="c"><input type="checkbox" class="ck paid" disabled aria-label="Plătit" {{ 'checked' if r['paid'] }}></td>
+      <td class="c"><input type="checkbox" class="ck received" disabled aria-label="Primit" {{ 'checked' if r['received'] }}></td>
+      {% endif %}
+    </tr>
+    {% else %}
+    <tr><td colspan="5" class="muted">Niciun elev de afișat.</td></tr>
+    {% endfor %}
+  </table></div>
+</section>
+
+{% if is_admin %}
+<script>
+  // fiecare bifa se salveaza imediat
+  document.addEventListener('change', async (e) => {
+    const box = e.target.closest('.track-form input[type=checkbox]');
+    if (!box) return;
+    const form = box.closest('form');
+    const inputs = form.querySelectorAll('input[type=checkbox]');
+    inputs.forEach(i => i.disabled = true);
+    try {
+      const res = await fetch(form.action, { method: 'POST', body: new FormData(form),
+                                             headers: { 'X-Requested-With': 'fetch' } });
+      if (!res.ok) throw new Error(res.status);
+      const counts = await res.json();
+      for (const k of ['chosen', 'paid', 'received']) document.getElementById('c-' + k).textContent = counts[k];
+    } catch (err) {
+      box.checked = !box.checked;   // anuleaza bifa daca nu s-a salvat
+      alert('Nu s-a putut salva. Reîncarcă pagina și încearcă din nou.');
+    } finally {
+      inputs.forEach(i => i.disabled = false);
+    }
+  });
+</script>
+{% endif %}
+{% endblock %}

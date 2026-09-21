@@ -12,3 +12,25 @@
     <button class="link danger">Șterge</button>
   </form>
 {% endmacro %}
+
+{% macro stepper(s, field, editable) %}
+<div class="stepper">
+  {% if editable %}
+  <form method="post" action="{{ url_for('supply_adjust', supply_id=s['id']) }}" class="ajax">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <input type="hidden" name="field" value="{{ field }}">
+    <input type="hidden" name="delta" value="-1">
+    <button aria-label="Scade">−</button>
+  </form>
+  {% endif %}
+  <span class="qty-num">{{ s[field] }}</span>
+  {% if editable %}
+  <form method="post" action="{{ url_for('supply_adjust', supply_id=s['id']) }}" class="ajax">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <input type="hidden" name="field" value="{{ field }}">
+    <input type="hidden" name="delta" value="1">
+    <button aria-label="Crește">+</button>
+  </form>
+  {% endif %}
+</div>
+{% endmacro %}

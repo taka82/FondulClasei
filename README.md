@@ -42,6 +42,18 @@ Părinții nu văd plățile altor elevi.
 5. **Conturi** → creează conturi de părinte, legate de un elev.
 6. **Setări** → numele clasei și soldul reportat din anul anterior.
 
+### Rechizite
+
+Pagina **Rechizite** ține lista de rechizite ale clasei (categorie, cantitate, câte s-au cumpărat, observații) și, pentru fiecare, bifele per elev:
+
+- **Ales**: elevul s-a oferit să cumpere rechizitul
+- **Plătit**: a achitat suma
+- **Primit**: rechizitul a ajuns la elev
+
+Statusul e calculat singur: 0 cumpărate = *De cumpărat*, toate = *Cumpărat*, între ele = *Parțial*. Butoanele − / + schimbă cantitatea și numărul de cumpărate, iar în pagina *detalii* a rechizitului bifezi fiecare elev (se salvează imediat). Există căutare, filtre pe categorie și status, sortare pe coloane și export CSV (cu numele elevilor).
+
+Casierul editează tot. Părinții văd lista, statusurile și numărul total de elevi care au ales/plătit/primit, dar la nivel de elev **doar bifele copilului lor**.
+
 Un elev transferat se **dezactivează**: nu mai apare la restanțe, dar plățile lui rămân în sold. Elevii și contribuțiile cu plăți înregistrate nu pot fi șterse.
 
 ## Date și backup

@@ -1,0 +1,40 @@
+{% from "_macros.html" import stepper %}
+{% set st = supply_status(s['bought'], s['qty']) %}
+<tr data-id="{{ s['id'] }}">
+  <td>
+    <span class="item-name">{{ s['name'] }}</span>
+    {% if s['note'] %}<span class="muted small block">{{ s['note'] }}</span>{% endif %}
+  </td>
+  <td><span class="tag">{{ s['category'] }}</span></td>
+  <td>{{ stepper(s, 'qty', is_admin) }}</td>
+  <td>{{ stepper(s, 'bought', is_admin) }}</td>
+  <td><span class="badge {{ SUPPLY_STATUS[st][1] }}">{{ SUPPLY_STATUS[st][0] }}</span></td>
+  <td>
+    {% if total %}
+      <div class="mini" title="Ales: {{ s['chosen'] }} · Plătit: {{ s['paid'] }} · Primit: {{ s['received'] }}">
+        <span class="small muted">{{ s['chosen'] }}/{{ total }}</span>
+        <div class="bar"><i style="width: {{ (s['received'] * 100 / total)|round|int }}%"></i></div>
+      </div>
+      <a class="small" href="{{ url_for('supply_detail', supply_id=s['id']) }}">detalii</a>
+    {% else %}<span class="muted small">—</span>{% endif %}
+  </td>
+  {% if not is_admin %}
+  <td>
+    {% set m = mine.get(s['id']) %}
+    <span class="pips">
+      <span class="pip {{ 'on chosen' if m and m['chosen'] }}" title="Ales">Ales</span>
+      <span class="pip {{ 'on paid' if m and m['paid'] }}" title="Plătit">Plătit</span>
+      <span class="pip {{ 'on received' if m and m['received'] }}" title="Primit">Primit</span>
+    </span>
+  </td>
+  {% else %}
+  <td class="actions nowrap">
+    <a href="{{ url_for('supply_edit', supply_id=s['id']) }}">Modifică</a>
+    <form method="post" action="{{ url_for('supply_delete', supply_id=s['id']) }}" class="inline"
+          onsubmit="return confirm('Ștergi rechizitul și bifele asociate?')">
+      <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+      <button class="link danger">Șterge</button>
+    </form>
+  </td>
+  {% endif %}
+</tr>

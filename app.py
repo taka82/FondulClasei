@@ -263,7 +263,7 @@ def dashboard():
     elif g.user["student_id"]:
         my_student = db.one("SELECT * FROM students WHERE id = ?", (g.user["student_id"],))
     return render_template(
-        "dashboard.html", opening=opening, collected=collected, spent=spent,
+        "dashboard.html", opening=opening, collected=collected, spent=spent, supply_stats=supply_stats(),
         balance=opening + collected - spent, outstanding=outstanding,
         by_category=by_category, recent_expenses=recent_expenses,
         recent_payments=recent_payments, my_student=my_student,
@@ -711,6 +711,249 @@ def export_outstanding():
                           f"{r['amount'] / 100:.2f}".replace(".", ","),
                           f"{r['paid'] / 100:.2f}".replace(".", ","),
                           f"{(r['amount'] - r['paid']) / 100:.2f}".replace(".", ",")) for r in rows])
+
+
+# ---------------------------------------------------------------- rechizite
+
+SUPPLY_STATUS = {
+    "necesar": ("De cumpărat", "bad"),
+    "partial": ("Parțial", "warn"),
+    "cumparat": ("Cumpărat", "ok"),
+}
+SUPPLY_STATUS_ORDER = {"necesar": 0, "partial": 1, "cumparat": 2}
+
+
+def supply_status(bought, qty):
+    if bought <= 0:
+        return "necesar"
+    return "cumparat" if bought >= qty else "partial"
+
+
+def initials(name):
+    words = [w for w in name.replace("-", " ").split() if w]
+    return "".join(w[0] for w in words[:2]).upper() or "?"
+
+
+app.jinja_env.globals.update(SUPPLY_STATUS=SUPPLY_STATUS, supply_status=supply_status)
+app.jinja_env.filters["initials"] = initials
+
+
+def parse_int(text, default, minimum=0, maximum=10000):
+    try:
+        value = int((text or "").strip())
+    except ValueError:
+        value = default
+    return max(minimum, min(maximum, value))
+
+
+def supply_rows(supply_id=None):
+    """Rechizitele cu numarul de elevi (activi) care au ales / platit / primit."""
+    rows = db.query(
+        "SELECT s.*, COALESCE(SUM(t.chosen), 0) AS chosen, COALESCE(SUM(t.paid), 0) AS paid, "
+        "       COALESCE(SUM(t.received), 0) AS received "
+        "FROM supplies s "
+        "LEFT JOIN (SELECT t.* FROM supply_tracking t "
+        "           JOIN students st ON st.id = t.student_id AND st.active = 1) t ON t.supply_id = s.id "
+        + ("WHERE s.id = ? " if supply_id else "") + "GROUP BY s.id",
+        (supply_id,) if supply_id else (),
+    )
+    return [dict(r, status=supply_status(r["bought"], r["qty"])) for r in rows]
+
+
+def supply_or_404(supply_id):
+    rows = supply_rows(supply_id)
+    if not rows:
+        abort(404)
+    return rows[0]
+
+
+def active_student_count():
+    return db.scalar("SELECT COUNT(*) FROM students WHERE active = 1")
+
+
+def my_tracking():
+    """Bifele copilului asociat contului de parinte: {supply_id: rand}."""
+    if is_admin() or not g.user["student_id"]:
+        return {}
+    return {r["supply_id"]: r for r in db.query(
+        "SELECT * FROM supply_tracking WHERE student_id = ?", (g.user["student_id"],))}
+
+
+def supply_stats():
+    stats = {"total": 0, "necesar": 0, "partial": 0, "cumparat": 0}
+    for r in db.query("SELECT qty, bought FROM supplies"):
+        stats["total"] += 1
+        stats[supply_status(r["bought"], r["qty"])] += 1
+    return stats
+
+
+def wants_fragment():
+    return request.headers.get("X-Requested-With") == "fetch"
+
+
+def read_supply_form():
+    name = request.form.get("name", "").strip()[:100]
+    if not name:
+        raise ValueError("Denumirea este obligatorie.")
+    category = request.form.get("category", "").strip()[:50] or "General"
+    qty = parse_int(request.form.get("qty"), 1, minimum=1)
+    bought = parse_int(request.form.get("bought"), 0, maximum=qty)
+    note = request.form.get("note", "").strip()[:300]
+    return name, category, qty, bought, note
+
+
+@app.route("/supplies", methods=["GET", "POST"])
+@login_required
+def supplies():
+    if request.method == "POST":
+        if not is_admin():
+            abort(403)
+        try:
+            db.execute("INSERT INTO supplies(name, category, qty, bought, note) VALUES (?, ?, ?, ?, ?)",
+                       read_supply_form())
+            flash("Rechizit adăugat.", "ok")
+        except ValueError as e:
+            flash(str(e), "error")
+        return redirect(url_for("supplies"))
+
+    everything = supply_rows()
+    stats = supply_stats()
+    categories = sorted({r["category"] for r in everything}, key=str.lower)
+
+    q = request.args.get("q", "").strip().lower()
+    cat = request.args.get("cat", "")
+    status = request.args.get("status", "")
+    sort = request.args.get("sort", "name")
+    direction = "desc" if request.args.get("dir") == "desc" else "asc"
+
+    rows = [r for r in everything
+            if (not q or q in r["name"].lower() or q in r["category"].lower())
+            and (not cat or r["category"] == cat)
+            and (not status or r["status"] == status)]
+    keys = {
+        "name": lambda r: r["name"].lower(),
+        "cat": lambda r: (r["category"].lower(), r["name"].lower()),
+        "qty": lambda r: (r["qty"], r["name"].lower()),
+        "status": lambda r: (SUPPLY_STATUS_ORDER[r["status"]], r["name"].lower()),
+    }
+    rows.sort(key=keys.get(sort, keys["name"]), reverse=direction == "desc")
+
+    return render_template(
+        "supplies.html", supplies=rows, stats=stats, categories=categories, total=active_student_count(),
+        mine=my_tracking(), q=request.args.get("q", ""), cat=cat, status=status,
+        sort=sort if sort in keys else "name", direction=direction,
+    )
+
+
+@app.route("/supplies/<int:supply_id>")
+@login_required
+def supply_detail(supply_id):
+    supply = supply_or_404(supply_id)
+    rows = db.query(
+        "SELECT st.id, st.name, st.active, COALESCE(t.chosen, 0) AS chosen, "
+        "       COALESCE(t.paid, 0) AS paid, COALESCE(t.received, 0) AS received "
+        "FROM students st LEFT JOIN supply_tracking t ON t.student_id = st.id AND t.supply_id = ? "
+        "WHERE st.active = 1 OR t.chosen OR t.paid OR t.received "
+        "ORDER BY st.name COLLATE NOCASE", (supply_id,)
+    )
+    if not is_admin():
+        rows = [r for r in rows if r["id"] == g.user["student_id"]]
+    return render_template("supply_detail.html", supply=supply, rows=rows, total=active_student_count())
+
+
+@app.route("/supplies/<int:supply_id>/edit", methods=["GET", "POST"])
+@admin_required
+def supply_edit(supply_id):
+    supply = supply_or_404(supply_id)
+    if request.method == "POST":
+        try:
+            name, category, qty, bought, note = read_supply_form()
+            db.execute("UPDATE supplies SET name = ?, category = ?, qty = ?, bought = ?, note = ? WHERE id = ?",
+                       (name, category, qty, bought, note, supply_id))
+            flash("Rechizit actualizat.", "ok")
+            return redirect(url_for("supplies"))
+        except ValueError as e:
+            flash(str(e), "error")
+    categories = sorted({r["category"] for r in supply_rows()}, key=str.lower)
+    return render_template("supply_edit.html", supply=supply, categories=categories)
+
+
+@app.post("/supplies/<int:supply_id>/delete")
+@admin_required
+def supply_delete(supply_id):
+    supply_or_404(supply_id)
+    db.execute("DELETE FROM supplies WHERE id = ?", (supply_id,))
+    flash("Rechizit șters.", "ok")
+    return redirect(url_for("supplies"))
+
+
+@app.post("/supplies/<int:supply_id>/adjust")
+@admin_required
+def supply_adjust(supply_id):
+    """Butoanele − / + pentru cantitate si numar cumparat."""
+    supply = supply_or_404(supply_id)
+    field = request.form.get("field")
+    delta = {"1": 1, "-1": -1}.get(request.form.get("delta"))
+    if field not in ("qty", "bought") or delta is None:
+        abort(400, "Cerere invalidă.")
+    qty, bought = supply["qty"], supply["bought"]
+    if field == "qty":
+        qty = max(1, qty + delta)
+        bought = min(bought, qty)
+    else:
+        bought = min(qty, max(0, bought + delta))
+    db.execute("UPDATE supplies SET qty = ?, bought = ? WHERE id = ?", (qty, bought, supply_id))
+    if wants_fragment():
+        return render_template("_supply_row.html", s=supply_or_404(supply_id), mine=my_tracking(),
+                               total=active_student_count())
+    return redirect(safe_next(request.form.get("next")) or url_for("supplies"))
+
+
+@app.post("/supplies/<int:supply_id>/track")
+@admin_required
+def supply_track(supply_id):
+    """Salveaza bifele Ales / Plătit / Primit ale unui elev pentru un rechizit."""
+    supply_or_404(supply_id)
+    try:
+        student_id = int(request.form.get("student_id", ""))
+    except ValueError:
+        abort(400, "Cerere invalidă.")
+    if not db.one("SELECT 1 FROM students WHERE id = ?", (student_id,)):
+        abort(404)
+    chosen, paid, received = (1 if request.form.get(k) else 0 for k in ("chosen", "paid", "received"))
+    db.execute(
+        "INSERT INTO supply_tracking(supply_id, student_id, chosen, paid, received) VALUES (?, ?, ?, ?, ?) "
+        "ON CONFLICT(supply_id, student_id) DO UPDATE SET "
+        "chosen = excluded.chosen, paid = excluded.paid, received = excluded.received",
+        (supply_id, student_id, chosen, paid, received),
+    )
+    if wants_fragment():
+        counts = supply_or_404(supply_id)
+        return {k: counts[k] for k in ("chosen", "paid", "received")}
+    return redirect(url_for("supply_detail", supply_id=supply_id))
+
+
+@app.route("/export/supplies.csv")
+@admin_required
+def export_supplies():
+    def names_for(column):
+        rows = db.query(
+            f"SELECT t.supply_id, st.name FROM supply_tracking t JOIN students st ON st.id = t.student_id "
+            f"WHERE t.{column} = 1 ORDER BY st.name COLLATE NOCASE")
+        out = {}
+        for r in rows:
+            out.setdefault(r["supply_id"], []).append(r["name"])
+        return out
+
+    chosen, paid, received = names_for("chosen"), names_for("paid"), names_for("received")
+    rows = sorted(supply_rows(), key=lambda r: (r["category"].lower(), r["name"].lower()))
+    return csv_response(
+        "rechizite.csv",
+        ["Rechizit", "Categorie", "Cantitate", "Cumpărat", "Status", "Ales de", "Plătit de", "Primit de", "Observații"],
+        [(csv_safe(r["name"]), csv_safe(r["category"]), r["qty"], r["bought"], SUPPLY_STATUS[r["status"]][0],
+          csv_safe("; ".join(chosen.get(r["id"], []))), csv_safe("; ".join(paid.get(r["id"], []))),
+          csv_safe("; ".join(received.get(r["id"], []))), csv_safe(r["note"] or "")) for r in rows],
+    )
 
 
 # ---------------------------------------------------------------- erori

@@ -16,6 +16,15 @@
   <p class="muted small">Soldul include {{ opening|money }} raportați din anul anterior.</p>
 {% endif %}
 
+{% if supply_stats.total %}
+<div class="card">
+  <strong>Rechizite:</strong>
+  {{ supply_stats.necesar }} de cumpărat · {{ supply_stats.partial }} parțial · {{ supply_stats.cumparat }} cumpărate
+  <span class="muted">(din {{ supply_stats.total }})</span> ·
+  <a href="{{ url_for('supplies') }}">Vezi rechizitele</a>
+</div>
+{% endif %}
+
 {% if my_student %}
 <div class="card">
   <strong>{{ my_student['name'] }}</strong> ·

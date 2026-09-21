@@ -33,7 +33,9 @@ def backups(folder):
 def main():
     work = Path(tempfile.mkdtemp())
     mig = work / "migrations"
-    shutil.copytree(db.MIGRATIONS_DIR, mig)
+    mig.mkdir()
+    # doar migrarea initiala: restul testelor adauga propriile migrari deasupra ei
+    shutil.copy(db.MIGRATIONS_DIR / "0001_initial.sql", mig)
 
     # 1. baza noua: se aplica migrarea initiala, fara backup (nu exista nimic de salvat)
     fresh = work / "fresh" / "fond.db"
@@ -119,6 +121,28 @@ def main():
         (mig / f"{i:04d}_pas.sql").write_text(f"CREATE TABLE t{i}(x);\n", encoding="utf-8")
         db.migrate(old, mig)
     assert len(backups(old.parent)) <= db.KEEP_BACKUPS
+
+    # migrarile reale ale proiectului se aplica una dupa alta, atat pe baza noua cat si pe una veche
+    real = db.load_migrations()
+    assert [n for n, _ in real] == list(range(1, len(real) + 1)), "numerotare fara goluri"
+    latest = real[-1][0]
+    fresh_real = work / "real" / "fond.db"
+    fresh_real.parent.mkdir()
+    db.migrate(fresh_real)
+    assert version(fresh_real) == latest
+    upgrade = work / "upgrade" / "fond.db"
+    upgrade.parent.mkdir()
+    conn = sqlite3.connect(upgrade)
+    conn.executescript((db.MIGRATIONS_DIR / "0001_initial.sql").read_text(encoding="utf-8"))
+    conn.execute("INSERT INTO students(name) VALUES ('Popescu Ana')")
+    conn.commit()
+    conn.execute("PRAGMA user_version = 1")
+    conn.close()
+    db.migrate(upgrade)
+    assert version(upgrade) == latest
+    conn = sqlite3.connect(upgrade)
+    assert conn.execute("SELECT name FROM students").fetchall() == [("Popescu Ana",)]
+    conn.close()
 
     print("OK - migrarile functioneaza")
 
