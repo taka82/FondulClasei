@@ -161,7 +161,6 @@ def inject_globals():
         "is_admin": is_admin(),
         "class_name": db.get_setting("class_name", "Fondul clasei"),
         "has_logo": (BASE_DIR / "static" / "logo.png").exists(),  # sigla optionala: pune fisierul static/logo.png
-        "year": date.today().year,
     }
 
 

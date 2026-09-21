@@ -62,7 +62,7 @@ Interfața are stilul site-ului colegiului (moisilbrasov.ro): antet bleumarin cu
 
 Fonturile se încarcă doar dacă sunt instalate pe dispozitiv (altfel se folosește fontul sistemului); nu se descarcă nimic de pe servere externe (Google Fonts), ca să nu se trimită adresele IP ale părinților către terți.
 
-**Sigla:** dacă ai acordul colegiului să o folosești, pune fișierul `static/logo.png` (recomandat: sigla albă pe fundal transparent, se potrivește pe antetul bleumarin, înălțime ~150 px). Apare automat în antet. Subsolul precizează că aplicația nu este un site oficial al colegiului.
+**Sigla:** dacă ai acordul colegiului să o folosești, pune fișierul `static/logo.png` (recomandat: sigla albă pe fundal transparent, se potrivește pe antetul bleumarin, înălțime ~150 px). Apare automat în antet.
 
 ## Date și backup
 

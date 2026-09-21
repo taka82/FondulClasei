@@ -63,7 +63,6 @@ h2 { font-size: 1.15rem; margin: 0 0 12px; }
 .navlinks a:hover { background: rgba(255, 255, 255, .1); }
 .navlinks a.on { background: var(--nav-active); }
 
-.site-footer { background: var(--card); border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; text-align: center; padding: 18px 0; }
 @media (max-width: 560px) { .school { font-size: 1rem; } .brand-logo { height: 48px; } .header-row { padding-top: 12px; padding-bottom: 12px; } }
 
 /* carduri */
