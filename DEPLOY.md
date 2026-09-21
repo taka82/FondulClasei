@@ -80,7 +80,7 @@ Apoi **Reload** în tab-ul Web. Migrările bazei de date se aplică singure, cu 
 
 ## 8. Reînnoirea (plan gratuit)
 
-La fiecare **3 luni**, în tab-ul Web apasă butonul **Run until 3 months from today**; primești email de reamintire cu o săptămână înainte. Dacă uiți, site-ul se oprește (datele rămân) și se repornește la fel. Un plan plătit (**Developer, 10 $/lună**, pe site-ul european se facturează în euro) elimină restricția și permite un domeniu propriu, pe care îl cumperi separat de la un registrar. Prețurile pot fi schimbate: verifică pe pagina Pricing.
+La fiecare **3 luni**, în tab-ul Web apasă butonul **Run until 3 months from today**; primești email de reamintire cu o săptămână înainte. Dacă uiți, site-ul se oprește (datele rămân) și se repornește la fel. Un plan plătit (**Developer, 10 €/lună** pe site-ul european; pe cel global 10 $) elimină restricția și permite un domeniu propriu, pe care îl cumperi separat de la un registrar. Prețurile pot fi schimbate: verifică pe pagina Pricing.
 
 ## Dacă un părinte uită parola
 
