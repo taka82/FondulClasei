@@ -52,7 +52,14 @@ Pagina **Rechizite** ține lista de rechizite ale clasei (denumire, categorie, o
 
 **Cât trebuie comandat** rezultă din voturi: fiecare elev activ care a bifat „Ales” înseamnă o bucată. Coloana *De comandat* din listă arată numărul de voturi (din totalul de elevi), iar sus apar totalul de bucăți de comandat, câte rechizite au voturi și câte nu. În pagina *detalii* a rechizitului (link „Bifează”) bifezi fiecare elev, iar bifele se salvează imediat. Există căutare, filtre pe categorie și pe voturi (cu / fără), sortare pe coloane și export CSV (cu numele elevilor și „De comandat”).
 
-Casierul editează tot. Părinții văd lista, numărul de voturi și cât au plătit/primit elevii în total, dar la nivel de elev **doar bifele copilului lor**.
+**Cine poate bifa ce:**
+
+| | Ales | Plătit | Primit |
+|---|---|---|---|
+| **Casier** (administrator) | da, pentru orice elev | da | da |
+| **Părinte** | da, **doar pentru copilul lui** | nu | nu |
+
+Părintele bifează „Ales” direct din lista de rechizite (sau din pagina rechizitului) și se salvează imediat. Dacă rechizitul a fost deja plătit sau primit, părintele nu mai poate retrage votul (trebuie să discute cu casierul). Elevul se stabilește din contul părintelui, nu din cerere, așa că nu se poate vota pentru alt copil. La nivel de elev, părinții văd **doar bifele copilului lor**, plus totalurile (câți au votat, plătit, primit).
 
 Tabelul `supplies` mai are coloanele vechi `qty` și `bought` (cantitate, cumpărat); nu se mai folosesc și nu se afișează.
 

@@ -184,7 +184,8 @@ def main():
     # parintele: doar citire, vede doar bifele copilului lui
     pd = parent.get(d).get_data(as_text=True)
     assert "Popescu Ana" in pd and "Ionescu Mihai" not in pd and "Vasile Dan" not in pd
-    assert 'name="chosen"' not in pd and "disabled" in pd
+    assert 'action="/supplies/1/vote"' in pd and "/supplies/1/track" not in pd
+    assert 'name="chosen"' in pd and 'name="paid"' not in pd and 'name="received"' not in pd, "Plătit/Primit nu se pot bifa de parinte"
     pl = parent.get("/supplies").get_data(as_text=True)
     assert "Copilul meu" in pl and row(pl, "Caiet dictando") and 'class="order">2<' in pl
     assert "Rechizite:" in parent.get("/").get_data(as_text=True)
@@ -194,6 +195,46 @@ def main():
     assert parent.get("/supplies/1/edit").status_code == 403
     assert parent.get("/export/supplies.csv").status_code == 403
     assert parent.get("/supplies/999").status_code == 404
+
+    # --- parintele voteaza (Ales) pentru copilul lui; Platit / Primit raman la casier
+    def vote(client, supply_id, data):
+        return client.post(f"/supplies/{supply_id}/vote", data={**data, "csrf": token(client, "/supplies")},
+                           headers={"X-Requested-With": "fetch"})
+
+    def tracked(supply_id, student_id):
+        return sql("SELECT chosen, paid, received FROM supply_tracking WHERE supply_id = ? AND student_id = ?",
+                   supply_id, student_id)
+
+    r = vote(parent, 2, {"chosen": "1"})
+    assert r.get_json() == {"chosen": 1, "paid": 0, "received": 0} and tracked(2, 1) == [(1, 0, 0)]
+    # incearca sa bifeze Platit / Primit si sa voteze pentru alt elev: se ignora, elevul vine din cont
+    vote(parent, 2, {"chosen": "1", "paid": "1", "received": "1", "student_id": "2"})
+    assert tracked(2, 1) == [(1, 0, 0)] and tracked(2, 2) == []
+    # casierul bifeaza Platit; parintele nu-l poate sterge si nu poate retrage votul
+    ajax(admin, "/supplies/2/track", {"student_id": "1", "chosen": "1", "paid": "1"}, page="/supplies/2")
+    assert tracked(2, 1) == [(1, 1, 0)]
+    assert vote(parent, 2, {"chosen": "1"}).status_code == 200 and tracked(2, 1) == [(1, 1, 0)], "votul repetat pastreaza Platit"
+    r = vote(parent, 2, {})
+    assert r.status_code == 409 and "plătit" in r.get_json()["error"] and tracked(2, 1) == [(1, 1, 0)]
+    # fara plata, votul se poate retrage
+    assert tracked(3, 1) == []
+    vote(parent, 3, {"chosen": "1"})
+    assert tracked(3, 1) == [(1, 0, 0)]
+    assert vote(parent, 3, {}).get_json()["chosen"] == 0 and tracked(3, 1) == [(0, 0, 0)]
+    with fond.app.app_context():
+        assert fond.supply_stats()["de_comandat"] == 3, "votul parintelui conteaza la cantitatea de comandat"
+    # casierul nu are elev asociat, elevul dezactivat nu poate vota, anonimul e trimis la login
+    assert vote(admin, 3, {"chosen": "1"}).status_code == 403
+    post(admin, "/students/1/toggle", {}, page="/students")
+    assert vote(parent, 3, {"chosen": "1"}).status_code == 403
+    post(admin, "/students/1/toggle", {}, page="/students")
+    anon_client = fond.app.test_client()
+    r = anon_client.post("/supplies/3/vote", data={"chosen": "1", "csrf": token(anon_client, "/login")})
+    assert r.status_code == 302 and "/login" in r.headers["Location"]
+    # in lista: parintele are caseta Ales, casierul nu
+    pl = parent.get("/supplies").get_data(as_text=True)
+    assert 'action="/supplies/2/vote"' in pl and 'class="votebox"' in pl
+    assert 'class="vote"' not in admin.get("/supplies").get_data(as_text=True)
 
     # export (admin): cantitatea de comandat si numele elevilor pe coloane
     csv_text = admin.get("/export/supplies.csv").get_data(as_text=True).replace("\r", "")

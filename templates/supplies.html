@@ -62,4 +62,29 @@
     <p class="muted">Nu există rechizite încă.{% if is_admin %} Adaugă primul rechizit mai sus.{% endif %}</p>
   {% endif %}
 </section>
+
+{% if can_vote %}
+<script>
+  // parintele bifeaza "Ales" direct din lista; se salveaza imediat si se actualizeaza numarul de voturi
+  document.addEventListener('change', async (e) => {
+    const box = e.target.closest('form.vote input[type=checkbox]');
+    if (!box) return;
+    const form = box.closest('form');
+    const body = new FormData(form);   // citit inainte de dezactivare
+    box.disabled = true;
+    let message = 'Nu s-a putut salva. Reîncarcă pagina și încearcă din nou.';
+    try {
+      const res = await fetch(form.action, { method: 'POST', body, headers: { 'X-Requested-With': 'fetch' } });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { if (data.error) message = data.error; throw new Error(res.status); }
+      form.closest('tr').querySelector('.order').textContent = data.chosen;
+    } catch (err) {
+      box.checked = !box.checked;
+      alert(message);
+    } finally {
+      box.disabled = false;
+    }
+  });
+</script>
+{% endif %}
 {% endblock %}

@@ -813,7 +813,8 @@ def supplies():
 
     return render_template(
         "supplies.html", supplies=rows, stats=supply_stats(everything), categories=categories,
-        total=active_student_count(), mine=my_tracking(), q=request.args.get("q", ""), cat=cat, votes=votes,
+        total=active_student_count(), mine=my_tracking(), can_vote=parent_student_id() is not None,
+        q=request.args.get("q", ""), cat=cat, votes=votes,
         sort=sort if sort in keys else "name", direction=direction,
     )
 
@@ -831,7 +832,8 @@ def supply_detail(supply_id):
     )
     if not is_admin():
         rows = [r for r in rows if r["id"] == g.user["student_id"]]
-    return render_template("supply_detail.html", supply=supply, rows=rows, total=active_student_count())
+    return render_template("supply_detail.html", supply=supply, rows=rows, total=active_student_count(),
+                           can_vote=parent_student_id() is not None)
 
 
 @app.route("/supplies/<int:supply_id>/edit", methods=["GET", "POST"])
@@ -882,6 +884,45 @@ def supply_track(supply_id):
         counts = supply_or_404(supply_id)
         return {k: counts[k] for k in ("chosen", "paid", "received")}
     return redirect(url_for("supply_detail", supply_id=supply_id))
+
+
+def parent_student_id():
+    """Elevul contului de parinte, doar daca e activ (None pentru casier sau elev dezactivat)."""
+    student_id = None if is_admin() else g.user["student_id"]
+    if student_id and db.scalar("SELECT active FROM students WHERE id = ?", (student_id,)):
+        return student_id
+    return None
+
+
+@app.post("/supplies/<int:supply_id>/vote")
+@login_required
+def supply_vote(supply_id):
+    """Parintele voteaza (Ales) un rechizit pentru copilul lui. Plătit / Primit raman la casier.
+
+    Elevul se ia din contul autentificat, niciodata din cerere.
+    """
+    supply_or_404(supply_id)
+    student_id = parent_student_id()
+    if student_id is None:
+        abort(403)
+    chosen = 1 if request.form.get("chosen") else 0
+    current = db.one("SELECT paid, received FROM supply_tracking WHERE supply_id = ? AND student_id = ?",
+                     (supply_id, student_id))
+    if not chosen and current and (current["paid"] or current["received"]):
+        message = "Nu poți retrage votul: rechizitul a fost deja plătit sau primit. Discută cu casierul."
+        if wants_fragment():
+            return {"error": message}, 409
+        flash(message, "error")
+        return redirect(url_for("supplies"))
+    db.execute(
+        "INSERT INTO supply_tracking(supply_id, student_id, chosen) VALUES (?, ?, ?) "
+        "ON CONFLICT(supply_id, student_id) DO UPDATE SET chosen = excluded.chosen",
+        (supply_id, student_id, chosen),
+    )
+    if wants_fragment():
+        counts = supply_or_404(supply_id)
+        return {k: counts[k] for k in ("chosen", "paid", "received")}
+    return redirect(safe_next(request.form.get("next")) or url_for("supplies"))
 
 
 @app.route("/export/supplies.csv")

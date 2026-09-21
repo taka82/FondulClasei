@@ -173,3 +173,8 @@ input.ck.paid { accent-color: #16a34a; }
 input.ck.received { accent-color: #9333ea; }
 .avatar { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; background: var(--line); font-size: .76rem; font-weight: 700; margin-right: 8px; vertical-align: middle; }
 @media (max-width: 560px) { .track-form { grid-template-columns: repeat(3, 60px); } table.track th.c, table.track td.c { width: 60px; } }
+
+/* parinte: caseta "Ales" direct in lista */
+.myrow { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.myrow form { margin: 0; }
+.votebox { display: inline-flex; align-items: center; gap: 6px; font-size: .9rem; cursor: pointer; }

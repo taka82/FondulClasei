@@ -10,10 +10,20 @@
   {% if not is_admin %}
   <td>
     {% set m = mine.get(s['id']) %}
-    <span class="pips">
+    <span class="myrow">
+      {% if can_vote %}
+      <form method="post" action="{{ url_for('supply_vote', supply_id=s['id']) }}" class="vote">
+        <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+        <label class="votebox" title="Bifează dacă vrei acest rechizit pentru copilul tău">
+          <input type="checkbox" class="ck chosen" name="chosen" value="1" {{ 'checked' if m and m['chosen'] }}> Ales
+        </label>
+        <noscript><button class="btn small">Salvează</button></noscript>
+      </form>
+      {% else %}
       <span class="pip {{ 'on chosen' if m and m['chosen'] }}" title="Ales">Ales</span>
-      <span class="pip {{ 'on paid' if m and m['paid'] }}" title="Plătit">Plătit</span>
-      <span class="pip {{ 'on received' if m and m['received'] }}" title="Primit">Primit</span>
+      {% endif %}
+      <span class="pip {{ 'on paid' if m and m['paid'] }}" title="Plătit (îl bifează casierul)">Plătit</span>
+      <span class="pip {{ 'on received' if m and m['received'] }}" title="Primit (îl bifează casierul)">Primit</span>
     </span>
   </td>
   {% else %}

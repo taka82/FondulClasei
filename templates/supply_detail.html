@@ -21,7 +21,10 @@
     Primit: <strong id="c-received">{{ supply['received'] }}</strong>
     <span class="muted">din {{ total }} elevi</span>
   </p>
-  {% if not is_admin %}<p class="muted small">Vezi doar situația copilului tău.</p>{% endif %}
+  {% if not is_admin %}
+    <p class="muted small">Vezi doar situația copilului tău.
+      {% if can_vote %}Bifează <strong>Ales</strong> dacă vrei acest rechizit; <strong>Plătit</strong> și <strong>Primit</strong> le bifează casierul.{% endif %}</p>
+  {% endif %}
 
   <div class="scroll"><table class="track">
     <thead><tr><th>#</th><th>Elev</th><th class="c">Ales</th><th class="c">Plătit</th><th class="c">Primit</th></tr></thead>
@@ -42,9 +45,15 @@
         </form>
       </td>
       {% else %}
-      <td class="c"><input type="checkbox" class="ck chosen" disabled aria-label="Ales" {{ 'checked' if r['chosen'] }}></td>
-      <td class="c"><input type="checkbox" class="ck paid" disabled aria-label="Plătit" {{ 'checked' if r['paid'] }}></td>
-      <td class="c"><input type="checkbox" class="ck received" disabled aria-label="Primit" {{ 'checked' if r['received'] }}></td>
+      <td colspan="3" class="trackcell">
+        <form method="post" action="{{ url_for('supply_vote', supply_id=supply['id']) }}" class="track-form">
+          <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+          <span class="c"><input type="checkbox" class="ck chosen" aria-label="Ales" {% if can_vote %}name="chosen" value="1"{% else %}disabled{% endif %} {{ 'checked' if r['chosen'] }}></span>
+          <span class="c"><input type="checkbox" class="ck paid" disabled aria-label="Plătit" {{ 'checked' if r['paid'] }}></span>
+          <span class="c"><input type="checkbox" class="ck received" disabled aria-label="Primit" {{ 'checked' if r['received'] }}></span>
+          <noscript>{% if can_vote %}<button class="btn small">Salvează</button>{% endif %}</noscript>
+        </form>
+      </td>
       {% endif %}
     </tr>
     {% else %}
@@ -53,29 +62,29 @@
   </table></div>
 </section>
 
-{% if is_admin %}
+{% if is_admin or can_vote %}
 <script>
   // fiecare bifa se salveaza imediat
   document.addEventListener('change', async (e) => {
     const box = e.target.closest('.track-form input[type=checkbox]');
     if (!box) return;
     const form = box.closest('form');
-    const inputs = form.querySelectorAll('input[type=checkbox]');
     // citim valorile INAINTE de dezactivare: campurile dezactivate nu se trimit in formular
     const body = new FormData(form);
-    inputs.forEach(i => i.disabled = true);
+    box.disabled = true;
+    let message = 'Nu s-a putut salva. Reîncarcă pagina și încearcă din nou.';
     try {
       const res = await fetch(form.action, { method: 'POST', body,
                                              headers: { 'X-Requested-With': 'fetch' } });
-      if (!res.ok) throw new Error(res.status);
-      const counts = await res.json();
-      for (const k of ['chosen', 'paid', 'received']) document.getElementById('c-' + k).textContent = counts[k];
-      document.getElementById('c-order').textContent = counts.chosen;
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { if (data.error) message = data.error; throw new Error(res.status); }
+      for (const k of ['chosen', 'paid', 'received']) document.getElementById('c-' + k).textContent = data[k];
+      document.getElementById('c-order').textContent = data.chosen;
     } catch (err) {
       box.checked = !box.checked;   // anuleaza bifa daca nu s-a salvat
-      alert('Nu s-a putut salva. Reîncarcă pagina și încearcă din nou.');
+      alert(message);
     } finally {
-      inputs.forEach(i => i.disabled = false);
+      box.disabled = false;
     }
   });
 </script>
