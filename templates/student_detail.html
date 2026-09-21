@@ -82,7 +82,7 @@
     {% for h in history %}
     <tr>
       <td class="nowrap">{% if h['date'] %}{{ h['date']|ro_date }}{% else %}<span class="muted">—</span>{% endif %}</td>
-      <td>{% if h['kind'] == 'expense' %}<span class="badge">cheltuială</span> {{ h['label'] }}
+      <td>{% if h['kind'] == 'expense' %}<span class="badge upper">cheltuială</span> {{ h['label'] }}
           {% elif h['supply_id'] %}<a href="{{ url_for('supply_detail', supply_id=h['supply_id']) }}">{{ h['label'] }}</a>
           {% else %}{{ h['label'] }}{% endif %}</td>
       <td class="num">{% if h['kind'] == 'expense' %}{{ h['amount']|money }}<br><span class="muted small">din {{ h['total']|money }} · {{ h['n'] }} elevi</span>

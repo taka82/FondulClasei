@@ -107,6 +107,7 @@ td.actions { text-align: right; white-space: nowrap; }
 .badge.ok { background: var(--ok-bg); color: var(--ok); }
 .badge.warn { background: var(--warn-bg); color: var(--warn); }
 .badge.bad { background: var(--bad-bg); color: var(--bad); }
+.badge.upper { text-transform: uppercase; letter-spacing: .04em; }
 
 /* formulare */
 .stack { display: grid; gap: 14px; }
