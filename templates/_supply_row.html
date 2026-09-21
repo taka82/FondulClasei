@@ -26,7 +26,11 @@
       <span class="pip {{ 'on chosen' if m and m['chosen'] }}" title="Ales">Ales</span>
       <span class="pip {{ 'on received' if m and m['received'] }}" title="Primit">Primit</span>
       {% endif %}
-      <span class="pip {{ 'on paid' if m and m['paid'] }}" title="Plătit (îl bifează casierul)">Plătit</span>
+      {% if m and m['paid'] %}
+      <span class="pip on paid" title="Plătit (bifat de casier)">Plătit</span>
+      {% else %}
+      <span class="pip" title="Încă neplătit (îl bifează casierul după ce plătești)">Neplătit</span>
+      {% endif %}
     </span>
   </td>
   {% else %}

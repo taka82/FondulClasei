@@ -272,6 +272,10 @@ def main():
     # in lista: parintele are casetele Ales si Primit (nu Platit), casierul nu are formularul de vot
     pl = parent.get("/supplies").get_data(as_text=True)
     assert 'action="/supplies/2/vote"' in pl and pl.count('class="votebox"') >= 2 * 2
+    # indicatorul de plata: "Plătit" (verde) cand e platit, "Neplătit" (gri) cand nu e; niciodata un "Plătit" gri
+    assert 'class="pip on paid"' in pl and ">Plătit</span>" in pl, "Engleza e platita"
+    assert re.search(r'<span class="pip"[^>]*>Neplătit</span>', pl), "Caiet dictando nu e platit"
+    assert not re.search(r'<span class="pip"[^>]*>Plătit</span>', pl), "nu mai apare un Plătit gri, care induce in eroare"
     assert 'data-field="chosen"' in pl and 'data-field="received"' in pl and 'data-field="paid"' not in pl
     assert 'class="vote"' not in admin.get("/supplies").get_data(as_text=True)
 
