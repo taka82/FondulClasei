@@ -41,7 +41,7 @@ Părinții nu văd plățile altor elevi.
 1. **Elevi** → adaugă lista clasei (un nume pe rând).
 2. **Contribuții** → creează „Fond septembrie”, „Excursie” etc. cu suma per elev.
 3. Deschide o contribuție și apasă **Plătit** în dreptul elevului (sau modifică suma pentru plăți parțiale).
-4. **Cheltuieli** → înregistrează ce s-a cheltuit, cu categorie.
+4. **Cheltuieli** → înregistrează ce s-a cheltuit, cu categorie. **Fiecare cheltuială se împarte egal între elevii activi** de la momentul înregistrării (suma exactă: restul de bani se distribuie, deci totalul părților e întotdeauna egal cu suma cheltuită). Partea fiecărui elev apare în **Istoricul** lui (și la părinte), ca „cheltuială”, cu suma lui și totalul cheltuielii; pagina Cheltuieli arată „Pe elev” (~media) și numărul de elevi. La modificarea sumei, părțile se recalculează pentru aceiași elevi; un elev adăugat mai târziu nu primește parte din cheltuielile vechi. Părțile sunt **informative**: nu se adaugă la restanțe și nu modifică soldul fondului.
 5. **Conturi** (doar administratorul) → creează conturi de părinte (legate de un elev), de casier sau de administrator.
 6. **Setări** → numele clasei și soldul reportat din anul anterior.
 

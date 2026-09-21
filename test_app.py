@@ -396,13 +396,15 @@ def main():
     assert paid_state(1, 2) == [(1, "2026-01-05", 1250)], "o noua salvare cu Plătit bifat nu schimba data si suma"
     # istoricul: contributii + rechizite, cele mai recente primele
     rows2 = history_rows(admin.get("/students/2").get_data(as_text=True))
-    assert [r[:3] for r in rows2] == [["20.09.2026", "Fond septembrie", "20,00 lei"],
+    assert [r[:3] for r in rows2] == [["21.09.2026", "cheltuială Cadouri", "10,00 lei din 30,00 lei · 3 elevi"],
+                                     ["20.09.2026", "Fond septembrie", "20,00 lei"],
                                      ["05.01.2026", "Rechizit: Caiet dictando", "12,50 lei"]], rows2
     # parintele elevului 1 vede ce a platit (contributie + rechizit), fara butoane de stergere
     parent_history = parent.get("/students/1").get_data(as_text=True)
     assert sorted(r[:3] for r in history_rows(parent_history)) == sorted([
         [date.today().strftime("%d.%m.%Y"), "Rechizit: Engleza", "preț nestabilit"],
-        ["20.09.2026", "Fond septembrie", "50,00 lei"]])
+        ["20.09.2026", "Fond septembrie", "50,00 lei"],
+        ["21.09.2026", "cheltuială Cadouri", "10,00 lei din 30,00 lei · 3 elevi"]])
     assert "Ștergi această plată" not in parent_history and "payment_delete" not in parent_history
     # exportul de plati are si rechizitele
     plati = admin.get("/export/payments.csv").get_data(as_text=True).replace("\r", "")
@@ -425,6 +427,69 @@ def main():
     # se readuce pretul la valoarea initiala, pentru verificarile de mai jos
     post(admin, "/supplies/1/edit", {"name": "Caiet dictando", "category": "Caiete", "price": "12,50", "note": "tip II"}, page="/supplies/1/edit")
     assert sql("SELECT price FROM supplies WHERE id = 1") == [(1250,)]
+
+    # --- cheltuielile se impart egal intre elevi; partea fiecaruia apare in istoricul lui
+    def shares(expense_id):
+        return sql("SELECT student_id, amount FROM expense_shares WHERE expense_id = ? ORDER BY student_id", expense_id)
+
+    flori = sql("SELECT id FROM expenses WHERE description = 'Flori'")[0][0]
+    assert shares(flori) == [(1, 1000), (2, 1000), (3, 1000)], "30,00 lei / 3 elevi = 10,00 lei fiecare"
+
+    # suma care nu se imparte exact: 100,01 lei / 3 -> 33,34 + 33,34 + 33,33 (totalul ramane exact)
+    assert "Cheltuială înregistrată" in post(admin, "/expenses", {"spent_on": "2026-09-23", "category": "Test impartire",
+                                                                "amount": "100,01", "description": "rest de bani"}, page="/expenses").get_data(as_text=True)
+    eid = sql("SELECT id FROM expenses WHERE category = 'Test impartire'")[0][0]
+    assert shares(eid) == [(1, 3334), (2, 3334), (3, 3333)]
+    assert sum(a for _, a in shares(eid)) == 10001
+
+    # elevii vad partea lor: elevul 1 -> 33,34, elevul 3 -> 33,33
+    assert ["23.09.2026", "cheltuială Test impartire", "33,34 lei din 100,01 lei · 3 elevi"] in \
+        [r[:3] for r in history_rows(parent.get("/students/1").get_data(as_text=True))]
+    assert ["23.09.2026", "cheltuială Test impartire", "33,33 lei din 100,01 lei · 3 elevi"] in \
+        [r[:3] for r in history_rows(admin.get("/students/3").get_data(as_text=True))]
+    # parintele nu vede partile altor elevi
+    assert "33,33 lei din" not in parent.get("/students/1").get_data(as_text=True)
+    assert "Ștergi această plată" not in parent.get("/students/1").get_data(as_text=True)
+    me_page = parent.get("/students/1").get_data(as_text=True)
+    assert "Partea copilului din cheltuieli, în total:" in me_page and "Nu se adaugă la restanțe" in me_page
+    # pagina Cheltuieli si exportul arata cati elevi si cat revine fiecaruia
+    exp_page = parent.get("/expenses").get_data(as_text=True)
+    assert "Pe elev" in exp_page and "~33,34 lei" in exp_page and "3 elevi" in exp_page
+    exp_csv = admin.get("/export/expenses.csv").get_data(as_text=True).replace("\r", "")
+    assert "Descriere;Elevi;Parte pe elev (lei)" in exp_csv and "rest de bani;3;33,34" in exp_csv
+
+    # elev dezactivat: nu primeste parte din cheltuielile noi
+    post(admin, "/students/3/toggle", {}, page="/students")
+    post(admin, "/expenses", {"spent_on": "2026-09-24", "category": "Fara elevul 3", "amount": "10"}, page="/expenses")
+    e2 = sql("SELECT id FROM expenses WHERE category = 'Fara elevul 3'")[0][0]
+    assert shares(e2) == [(1, 500), (2, 500)], "doar elevii activi de la momentul cheltuielii"
+    post(admin, "/students/3/toggle", {}, page="/students")
+    assert shares(e2) == [(1, 500), (2, 500)], "reactivarea nu adauga retroactiv parti"
+
+    # editarea sumei recalculeaza partile pentru aceiasi elevi (inclusiv cand un elev e intre timp dezactivat)
+    post(admin, "/students/1/toggle", {}, page="/students")     # elevul 1 dezactivat intre timp
+    post(admin, f"/expenses/{eid}/edit", {"spent_on": "2026-09-23", "category": "Test impartire", "amount": "200",
+                                          "description": "rest de bani"}, page=f"/expenses/{eid}/edit")
+    post(admin, "/students/1/toggle", {}, page="/students")
+    assert shares(eid) == [(1, 6667), (2, 6667), (3, 6666)], "20000 bani / 3 = 6667 + 6667 + 6666"
+    assert sum(a for _, a in shares(eid)) == 20000
+
+    # elev nou: primeste parte doar din cheltuielile de dupa aparitia lui; se poate sterge daca n-are plati
+    post(admin, "/students", {"names": "Elev Temp2"}, page="/students")
+    tid2 = sql("SELECT id FROM students WHERE name = 'Elev Temp2'")[0][0]
+    assert sql("SELECT COUNT(*) FROM expense_shares WHERE student_id = ?", tid2) == [(0,)]
+    post(admin, "/expenses", {"spent_on": "2026-09-25", "category": "Cu elev nou", "amount": "4"}, page="/expenses")
+    e3 = sql("SELECT id FROM expenses WHERE category = 'Cu elev nou'")[0][0]
+    assert [sid for sid, _ in shares(e3)] == [1, 2, 3, tid2]
+    assert "Șterge elevul" in admin.get(f"/students/{tid2}").get_data(as_text=True), "partile din cheltuieli nu blocheaza stergerea"
+    assert "Elev șters" in post(admin, f"/students/{tid2}/delete", {}, page=f"/students/{tid2}").get_data(as_text=True)
+    assert [sid for sid, _ in shares(e3)] == [1, 2, 3]
+
+    # stergerea cheltuielii sterge si partile; se revine la starea initiala pentru verificarile de mai jos
+    for e in (eid, e2, e3):
+        post(admin, f"/expenses/{e}/delete", {}, page="/expenses")
+        assert shares(e) == []
+    assert shares(flori) == [(1, 1000), (2, 1000), (3, 1000)]
 
     # export (admin): cantitatea de comandat si numele elevilor pe coloane
     csv_text = admin.get("/export/supplies.csv").get_data(as_text=True).replace("\r", "")

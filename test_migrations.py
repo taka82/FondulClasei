@@ -132,6 +132,7 @@ def main():
     assert version(fresh_real) == latest
     assert "price" in columns(fresh_real, "supplies")
     assert {"paid_on", "paid_amount"} <= set(columns(fresh_real, "supply_tracking"))
+    assert columns(fresh_real, "expense_shares") == ["expense_id", "student_id", "amount"]
     upgrade = work / "upgrade" / "fond.db"
     upgrade.parent.mkdir()
     conn = sqlite3.connect(upgrade)
@@ -186,6 +187,32 @@ def main():
         raise AssertionError("numele de utilizator ramane unic, fara diferenta majuscule")
     except sqlite3.IntegrityError:
         pass
+    conn.close()
+
+    # 10) migrarea 0006: cheltuielile existente se impart intre elevii activi de acum, cu suma exacta
+    v5 = work / "v5" / "fond.db"
+    v5.parent.mkdir()
+    upto5 = work / "upto5"
+    upto5.mkdir()
+    for path in sorted(db.MIGRATIONS_DIR.glob("*.sql")):
+        if int(path.name[:4]) <= 5:
+            shutil.copy(path, upto5)
+    db.migrate(v5, upto5)
+    assert version(v5) == 5
+    conn = sqlite3.connect(v5)
+    conn.executescript("""
+        INSERT INTO students(id, name, active) VALUES (1, 'A', 1), (2, 'B', 1), (3, 'C', 1), (4, 'Inactiv', 0);
+        INSERT INTO expenses(id, spent_on, category, amount) VALUES (1, '2026-09-01', 'Cadouri', 10001), (2, '2026-09-02', 'Mic', 2);
+    """)
+    conn.commit()
+    conn.close()
+    db.migrate(v5)
+    assert version(v5) == latest
+    conn = sqlite3.connect(v5)
+    assert conn.execute("SELECT student_id, amount FROM expense_shares WHERE expense_id = 1 ORDER BY student_id").fetchall() == [
+        (1, 3334), (2, 3334), (3, 3333)], "10001 bani / 3 elevi activi; elevul inactiv nu primeste parte"
+    assert conn.execute("SELECT student_id, amount FROM expense_shares WHERE expense_id = 2 ORDER BY student_id").fetchall() == [
+        (1, 1), (2, 1), (3, 0)], "2 bani la 3 elevi: primii doi primesc cate un ban"
     conn.close()
 
     print("OK - migrarile functioneaza")

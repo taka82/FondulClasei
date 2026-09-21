@@ -8,13 +8,15 @@
   <section class="card">
     {% if expenses %}
     <div class="scroll"><table>
-      <thead><tr><th>Data</th><th>Categorie</th><th>Descriere</th><th class="num">Suma</th>{% if is_staff %}<th></th>{% endif %}</tr></thead>
+      <thead><tr><th>Data</th><th>Categorie</th><th>Descriere</th><th class="num">Suma</th><th class="num">Pe elev</th>{% if is_staff %}<th></th>{% endif %}</tr></thead>
       {% for e in expenses %}
       <tr>
         <td class="nowrap">{{ e['spent_on']|ro_date }}</td>
         <td>{{ e['category'] }}</td>
         <td class="muted">{{ e['description'] }}</td>
         <td class="num">{{ e['amount']|money }}</td>
+        <td class="num nowrap">{% if e['n_students'] %}~{{ ((e['amount'] / e['n_students'])|round|int)|money }}
+          <br><span class="muted small">{{ e['n_students'] }} elevi</span>{% else %}<span class="muted">—</span>{% endif %}</td>
         {% if is_staff %}
         <td class="actions nowrap">
           <a href="{{ url_for('expense_edit', expense_id=e['id']) }}">Modifică</a>
@@ -23,8 +25,9 @@
         {% endif %}
       </tr>
       {% endfor %}
-      <tfoot><tr><th colspan="3">Total</th><th class="num">{{ total|money }}</th>{% if is_staff %}<th></th>{% endif %}</tr></tfoot>
+      <tfoot><tr><th colspan="3">Total</th><th class="num">{{ total|money }}</th><th></th>{% if is_staff %}<th></th>{% endif %}</tr></tfoot>
     </table></div>
+    <p class="muted small">Fiecare cheltuială se împarte egal între elevii activi de la momentul înregistrării; partea fiecărui elev apare în istoricul lui.</p>
     <p><a href="{{ url_for('export_expenses') }}">Descarcă (CSV)</a></p>
     {% else %}
       <p class="muted">Nicio cheltuială înregistrată.</p>
@@ -48,6 +51,7 @@
       </label>
       <label>Suma (lei) <input name="amount" required inputmode="decimal"></label>
       <label>Descriere (opțional) <input name="description" maxlength="300"></label>
+      <p class="muted small">Suma se împarte egal între cei <strong>{{ active_students }}</strong> elevi activi; partea fiecăruia apare în istoricul lui.</p>
       <button class="btn">Adaugă</button>
     </form>
   </section>

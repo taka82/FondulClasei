@@ -401,8 +401,18 @@ def student_detail(student_id):
                 "payment_id": p["id"], "supply_id": None} for p in payments]
     history += [{"date": t["paid_on"], "label": "Rechizit: " + t["name"], "amount": t["amount"], "note": "",
                  "payment_id": None, "supply_id": t["supply_id"]} for t in supply_payments]
+    expense_shares = db.query(
+        "SELECT e.id, e.spent_on, e.category, e.description, e.amount AS total, es.amount AS share, "
+        "       (SELECT COUNT(*) FROM expense_shares x WHERE x.expense_id = e.id) AS n "
+        "FROM expense_shares es JOIN expenses e ON e.id = es.expense_id WHERE es.student_id = ?", (student_id,))
+    history = [dict(h, kind="payment" if h["payment_id"] else "supply") for h in history]
+    history += [{"date": x["spent_on"], "label": x["category"], "amount": x["share"], "note": x["description"] or "",
+                 "payment_id": None, "supply_id": None, "kind": "expense", "expense_id": x["id"],
+                 "total": x["total"], "n": x["n"]} for x in expense_shares]
     history.sort(key=lambda h: h["date"] or "", reverse=True)   # cele fara data (bifate inainte) la final
     return render_template("student_detail.html", student=student, rows=rows, payments=payments, history=history,
+                           deletable=not (payments or supply_payments),
+                           expenses_share_total=sum(x["share"] for x in expense_shares),
                            student_supplies=supplies_of_student, today=date.today().isoformat(),
                            supplies_owed=sum(t["price"] for t in unpaid if t["price"]),
                            supplies_unpriced=sum(1 for t in unpaid if t["price"] is None))
@@ -588,6 +598,25 @@ def expense_categories():
         "SELECT category FROM expenses GROUP BY category ORDER BY COUNT(*) DESC")]
 
 
+def split_amount(total, student_ids):
+    """Imparte suma (in bani) egal intre elevi; restul de bani merge primilor, ca totalul sa fie exact."""
+    ids = sorted(student_ids)
+    if not ids:
+        return {}
+    base, extra = divmod(total, len(ids))
+    return {sid: base + (1 if i < extra else 0) for i, sid in enumerate(ids)}
+
+
+def save_expense_shares(conn, expense_id, amount, student_ids):
+    conn.execute("DELETE FROM expense_shares WHERE expense_id = ?", (expense_id,))
+    conn.executemany("INSERT INTO expense_shares(expense_id, student_id, amount) VALUES (?, ?, ?)",
+                     [(expense_id, sid, part) for sid, part in split_amount(amount, student_ids).items()])
+
+
+def active_student_ids():
+    return [r["id"] for r in db.query("SELECT id FROM students WHERE active = 1")]
+
+
 @app.route("/expenses", methods=["GET", "POST"])
 @login_required
 def expenses():
@@ -595,18 +624,25 @@ def expenses():
         if not is_staff():
             abort(403)
         try:
-            db.execute(
-                "INSERT INTO expenses(spent_on, category, amount, description, created_by) "
-                "VALUES (?, ?, ?, ?, ?)",
-                (*read_expense_form(), g.user["id"]),
+            spent_on, category, amount, description = read_expense_form()
+            conn = db.get_db()
+            cur = conn.execute(
+                "INSERT INTO expenses(spent_on, category, amount, description, created_by) VALUES (?, ?, ?, ?, ?)",
+                (spent_on, category, amount, description, g.user["id"]),
             )
-            flash("Cheltuială înregistrată.", "ok")
+            save_expense_shares(conn, cur.lastrowid, amount, active_student_ids())
+            conn.commit()
+            flash("Cheltuială înregistrată și împărțită între elevi.", "ok")
         except ValueError as e:
             flash(str(e), "error")
         return redirect(url_for("expenses"))
-    rows = db.query("SELECT * FROM expenses ORDER BY spent_on DESC, id DESC")
+    rows = db.query(
+        "SELECT e.*, (SELECT COUNT(*) FROM expense_shares x WHERE x.expense_id = e.id) AS n_students "
+        "FROM expenses e ORDER BY e.spent_on DESC, e.id DESC"
+    )
     return render_template("expenses.html", expenses=rows, total=sum(r["amount"] for r in rows),
-                           categories=expense_categories(), today=date.today().isoformat())
+                           categories=expense_categories(), today=date.today().isoformat(),
+                           active_students=len(active_student_ids()))
 
 
 @app.route("/expenses/<int:expense_id>/edit", methods=["GET", "POST"])
@@ -618,11 +654,17 @@ def expense_edit(expense_id):
     if request.method == "POST":
         try:
             spent_on, category, amount, description = read_expense_form()
-            db.execute(
+            conn = db.get_db()
+            conn.execute(
                 "UPDATE expenses SET spent_on = ?, category = ?, amount = ?, description = ? WHERE id = ?",
                 (spent_on, category, amount, description, expense_id),
             )
-            flash("Cheltuială actualizată.", "ok")
+            # partile se recalculeaza pentru aceiasi elevi (cei care au avut parte de cheltuiala la inceput)
+            sharers = [r["student_id"] for r in db.query(
+                "SELECT student_id FROM expense_shares WHERE expense_id = ?", (expense_id,))]
+            save_expense_shares(conn, expense_id, amount, sharers or active_student_ids())
+            conn.commit()
+            flash("Cheltuială actualizată; partea fiecărui elev a fost recalculată.", "ok")
             return redirect(url_for("expenses"))
         except ValueError as e:
             flash(str(e), "error")
@@ -761,10 +803,14 @@ def csv_safe(value):
 @app.route("/export/expenses.csv")
 @login_required
 def export_expenses():
-    rows = db.query("SELECT * FROM expenses ORDER BY spent_on, id")
-    return csv_response("cheltuieli.csv", ["Data", "Categorie", "Suma (lei)", "Descriere"],
-                        [(r["spent_on"], csv_safe(r["category"]), f"{r['amount'] / 100:.2f}".replace(".", ","),
-                          csv_safe(r["description"] or "")) for r in rows])
+    rows = db.query(
+        "SELECT e.*, (SELECT COUNT(*) FROM expense_shares x WHERE x.expense_id = e.id) AS n_students "
+        "FROM expenses e ORDER BY e.spent_on, e.id"
+    )
+    return csv_response("cheltuieli.csv", ["Data", "Categorie", "Suma (lei)", "Descriere", "Elevi", "Parte pe elev (lei)"],
+                        [(r["spent_on"], csv_safe(r["category"]), lei(r["amount"]), csv_safe(r["description"] or ""),
+                          r["n_students"] or "", lei((r["amount"] + r["n_students"] // 2) // r["n_students"]) if r["n_students"] else "")
+                         for r in rows])
 
 
 @app.route("/export/payments.csv")

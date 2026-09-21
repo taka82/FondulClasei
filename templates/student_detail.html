@@ -78,20 +78,28 @@
   <h2>Istoric plăți</h2>
   {% if history %}
   <div class="scroll"><table>
-    <thead><tr><th>Data</th><th>Contribuție / rechizit</th><th class="num">Suma</th><th>Observații</th>{% if is_staff %}<th></th>{% endif %}</tr></thead>
+    <thead><tr><th>Data</th><th>Contribuție / rechizit / cheltuială</th><th class="num">Suma</th><th>Observații</th>{% if is_staff %}<th></th>{% endif %}</tr></thead>
     {% for h in history %}
     <tr>
       <td class="nowrap">{% if h['date'] %}{{ h['date']|ro_date }}{% else %}<span class="muted">—</span>{% endif %}</td>
-      <td>{% if h['supply_id'] %}<a href="{{ url_for('supply_detail', supply_id=h['supply_id']) }}">{{ h['label'] }}</a>{% else %}{{ h['label'] }}{% endif %}</td>
-      <td class="num">{% if h['amount'] %}{{ h['amount']|money }}{% else %}<span class="muted small">preț nestabilit</span>{% endif %}</td>
+      <td>{% if h['kind'] == 'expense' %}<span class="badge">cheltuială</span> {{ h['label'] }}
+          {% elif h['supply_id'] %}<a href="{{ url_for('supply_detail', supply_id=h['supply_id']) }}">{{ h['label'] }}</a>
+          {% else %}{{ h['label'] }}{% endif %}</td>
+      <td class="num">{% if h['kind'] == 'expense' %}{{ h['amount']|money }}<br><span class="muted small">din {{ h['total']|money }} · {{ h['n'] }} elevi</span>
+          {% elif h['amount'] %}{{ h['amount']|money }}{% else %}<span class="muted small">preț nestabilit</span>{% endif %}</td>
       <td class="muted">{{ h['note'] }}</td>
       {% if is_staff %}<td class="actions">
-        {% if h['payment_id'] %}{{ delete_button(url_for('payment_delete', payment_id=h['payment_id']), request.path, 'Ștergi această plată?') }}
+        {% if h['kind'] == 'payment' %}{{ delete_button(url_for('payment_delete', payment_id=h['payment_id']), request.path, 'Ștergi această plată?') }}
+        {% elif h['kind'] == 'expense' %}<a href="{{ url_for('expense_edit', expense_id=h['expense_id']) }}">Modifică</a>
         {% else %}<a href="{{ url_for('supply_detail', supply_id=h['supply_id']) }}">Modifică</a>{% endif %}
       </td>{% endif %}
     </tr>
     {% endfor %}
   </table></div>
+  {% if expenses_share_total %}
+  <p class="muted small">Cheltuielile clasei se împart egal între elevi. <strong>Partea copilului din cheltuieli, în total:</strong>
+    {{ expenses_share_total|money }}. Nu se adaugă la restanțe și nu se scade din ce a plătit.</p>
+  {% endif %}
   {% else %}
     <p class="muted">Nicio plată înregistrată.</p>
   {% endif %}
@@ -110,7 +118,7 @@
       <input type="hidden" name="csrf" value="{{ csrf_token() }}">
       <button class="btn small secondary">{{ 'Dezactivează elevul' if student['active'] else 'Reactivează elevul' }}</button>
     </form>
-    {% if not history %}
+    {% if deletable %}
     <form method="post" action="{{ url_for('student_delete', student_id=student['id']) }}" class="inline"
           onsubmit="return confirm('Ștergi definitiv elevul?')">
       <input type="hidden" name="csrf" value="{{ csrf_token() }}">
