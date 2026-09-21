@@ -5,7 +5,11 @@
 <h1>{{ supply['name'] }}</h1>
 <p class="muted">
   <span class="tag">{{ supply['category'] }}</span>
+  {% if supply['price'] %}· preț: <strong>{{ supply['price']|money }}</strong> / bucată{% endif %}
   · <strong id="c-order">{{ supply['chosen'] }}</strong> de comandat (din {{ total }} elevi)
+  {% if is_staff and supply['price'] %}
+    · total de comandat: <strong id="c-total" data-price="{{ supply['price'] }}">{{ (supply['price'] * supply['chosen'])|money }}</strong>
+  {% endif %}
   {% if supply['note'] %}· {{ supply['note'] }}{% endif %}
 </p>
 
@@ -87,6 +91,9 @@
       if (!res.ok) { if (data.error) message = data.error; throw new Error(res.status); }
       for (const k of ['chosen', 'paid', 'received']) document.getElementById('c-' + k).textContent = data[k];
       document.getElementById('c-order').textContent = data.chosen;
+      const total = document.getElementById('c-total');
+      if (total) total.textContent = new Intl.NumberFormat('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                                       .format(total.dataset.price * data.chosen / 100) + ' lei';
     } catch (err) {
       box.checked = !box.checked;   // anuleaza bifa daca nu s-a salvat
       alert(message);

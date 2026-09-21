@@ -282,10 +282,43 @@ def main():
     assert row(other, "Caiet dictando") and not row(other, "Engleza"), "elevul 2 nu are Engleza"
     assert "Niciun rechizit ales" in admin.get("/students/3").get_data(as_text=True)
 
+    # --- pretul rechizitelor (informativ): se seteaza de casier, il vad toti, totalul doar casierul
+    assert sql("SELECT COUNT(*) FROM pragma_table_info('supplies') WHERE name = 'price'") == [(1,)]
+    edit_url = "/supplies/1/edit"
+    same = {"name": "Caiet dictando", "category": "Caiete", "note": "tip II"}
+    r = post(admin, edit_url, {**same, "price": "12,50"}, page=edit_url)
+    assert "Rechizit actualizat" in r.get_data(as_text=True) and sql("SELECT price FROM supplies WHERE id = 1") == [(1250,)]
+    for bad in ("abc", "0", "-5"):
+        r = post(admin, edit_url, {**same, "price": bad}, page=edit_url)
+        assert "Prețul nu este valid" in r.get_data(as_text=True), bad
+        assert sql("SELECT price FROM supplies WHERE id = 1") == [(1250,)], "pretul ramane neschimbat la o valoare gresita"
+    post(admin, "/supplies", {"name": "Caiet mate", "category": "Caiete", "price": "3"}, page="/supplies")
+    assert sql("SELECT price FROM supplies WHERE name = 'Caiet mate'") == [(300,)]
+    assert "Prețul nu este valid" in post(admin, "/supplies", {"name": "Fara pret valid", "price": "x"}, page="/supplies").get_data(as_text=True)
+    assert sql("SELECT COUNT(*) FROM supplies WHERE name = 'Fara pret valid'") == [(0,)]
+    post(admin, "/supplies", {"name": "Fara pret"}, page="/supplies")
+    assert sql("SELECT price FROM supplies WHERE name = 'Fara pret'") == [(None,)], "pretul e optional"
+    listing = admin.get("/supplies").get_data(as_text=True)
+    assert "12,50 lei" in listing and "3,00 lei" in listing and '<span class="muted">—</span></td>' in listing
+    sorted_desc = admin.get("/supplies?sort=price&dir=desc").get_data(as_text=True)
+    assert sorted_desc.index(">Caiet dictando</a>") < sorted_desc.index(">Caiet mate</a>") < sorted_desc.index(">Engleza</a>")
+    detail = admin.get("/supplies/1").get_data(as_text=True)
+    assert "preț: <strong>12,50 lei</strong>" in detail
+    assert 'id="c-total" data-price="1250">25,00 lei' in detail, "total de comandat = pret x voturi (2 x 12,50)"
+    assert 'value="12,50"' in admin.get(edit_url).get_data(as_text=True), "formularul de editare arata pretul"
+    # parintele vede pretul (lista, detalii, Situatia mea), dar nu totalul de comandat
+    assert "12,50 lei" in parent.get("/supplies").get_data(as_text=True)
+    parent_detail = parent.get("/supplies/1").get_data(as_text=True)
+    assert "preț: <strong>12,50 lei</strong>" in parent_detail and 'id="c-total"' not in parent_detail
+    assert "12,50 lei" in parent.get("/students/1").get_data(as_text=True)
+    # pretul e informativ: nu schimba soldul fondului
+    assert sql("SELECT COALESCE(SUM(amount), 0) FROM payments WHERE contribution_id IN (SELECT id FROM contributions)")[0][0] >= 0
+
     # export (admin): cantitatea de comandat si numele elevilor pe coloane
     csv_text = admin.get("/export/supplies.csv").get_data(as_text=True).replace("\r", "")
-    assert csv_text.startswith("\ufeffRechizit;Categorie;De comandat (buc.);Ales de")
-    assert 'Caiet dictando;Caiete;2;"Ionescu Mihai; Popescu Ana"' in csv_text
+    assert csv_text.startswith("\ufeffRechizit;Categorie;Preț (lei);De comandat (buc.);Total de comandat (lei);Ales de")
+    assert 'Caiet dictando;Caiete;12,50;2;25,00;"Ionescu Mihai; Popescu Ana"' in csv_text, csv_text
+    assert "Engleza;Manual;;1;;Popescu Ana;Popescu Ana;" in csv_text, "fara pret: coloanele de pret raman goale"
     assert "Cantitate" not in csv_text and "Status" not in csv_text
 
     # editare si stergere (bifele se sterg odata cu rechizitul)

@@ -47,13 +47,15 @@ Părinții nu văd plățile altor elevi.
 
 ### Rechizite
 
-Pagina **Rechizite** ține lista de rechizite ale clasei (denumire, categorie, observații) și, pentru fiecare, bifele per elev:
+Pagina **Rechizite** ține lista de rechizite ale clasei (denumire, categorie, preț, observații) și, pentru fiecare, bifele per elev:
 
 - **Ales**: elevul votează rechizitul (se oferă să îl cumpere)
 - **Plătit**: a achitat suma
 - **Primit**: rechizitul a ajuns la elev
 
 **Cât trebuie comandat** rezultă din voturi: fiecare elev activ care a bifat „Ales” înseamnă o bucată. Coloana *De comandat* din listă arată numărul de voturi (din totalul de elevi). În pagina *detalii* a rechizitului (link „Bifează”) bifezi fiecare elev, iar bifele se salvează imediat. Există căutare, filtre pe categorie și pe voturi (cu / fără), sortare pe coloane și export CSV (cu numele elevilor și „De comandat”).
+
+**Prețul** (în lei, per bucată) e opțional și se completează de casier la „Adaugă rechizit” sau „Modifică”. Îl văd toți: în listă, în pagina rechizitului și, la părinte, în „Situația mea”. Casierul vede în pagina rechizitului și **totalul de comandat** (preț × voturi), care se actualizează la fiecare bifă; exportul CSV are coloanele „Preț” și „Total de comandat”. Prețul este **informativ**: nu intră în soldul fondului și nu creează plăți.
 
 **Cine poate bifa ce:**
 

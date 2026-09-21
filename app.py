@@ -365,7 +365,7 @@ def student_detail(student_id):
         "WHERE p.student_id = ? ORDER BY p.paid_on DESC, p.id DESC", (student_id,)
     )
     supplies_of_student = db.query(
-        "SELECT sp.id, sp.name, sp.category, t.chosen, t.paid, t.received FROM supply_tracking t "
+        "SELECT sp.id, sp.name, sp.category, sp.price, t.chosen, t.paid, t.received FROM supply_tracking t "
         "JOIN supplies sp ON sp.id = t.supply_id "
         "WHERE t.student_id = ? AND (t.chosen OR t.paid OR t.received) ORDER BY sp.name COLLATE NOCASE",
         (student_id,)
@@ -777,7 +777,7 @@ app.jinja_env.filters["initials"] = initials
 def supply_rows(supply_id=None):
     """Rechizitele cu numarul de elevi (activi) care au ales / platit / primit."""
     return [dict(r) for r in db.query(
-        "SELECT s.id, s.name, s.category, s.note, COALESCE(SUM(t.chosen), 0) AS chosen, "
+        "SELECT s.id, s.name, s.category, s.note, s.price, COALESCE(SUM(t.chosen), 0) AS chosen, "
         "       COALESCE(SUM(t.paid), 0) AS paid, COALESCE(SUM(t.received), 0) AS received "
         "FROM supplies s "
         "LEFT JOIN (SELECT t.* FROM supply_tracking t "
@@ -822,8 +822,14 @@ def read_supply_form():
     if not name:
         raise ValueError("Denumirea este obligatorie.")
     category = request.form.get("category", "").strip()[:50] or "General"
+    price = None
+    if request.form.get("price", "").strip():
+        try:
+            price = parse_money(request.form["price"])
+        except ValueError:
+            raise ValueError("Prețul nu este valid (ex: 45 sau 45,50).")
     note = request.form.get("note", "").strip()[:300]
-    return name, category, note
+    return name, category, price, note
 
 
 @app.route("/supplies", methods=["GET", "POST"])
@@ -833,7 +839,7 @@ def supplies():
         if not is_staff():
             abort(403)
         try:
-            db.execute("INSERT INTO supplies(name, category, note) VALUES (?, ?, ?)", read_supply_form())
+            db.execute("INSERT INTO supplies(name, category, price, note) VALUES (?, ?, ?, ?)", read_supply_form())
             flash("Rechizit adăugat.", "ok")
         except ValueError as e:
             flash(str(e), "error")
@@ -857,6 +863,7 @@ def supplies():
         "name": lambda r: r["name"].lower(),
         "cat": lambda r: (r["category"].lower(), r["name"].lower()),
         "votes": lambda r: (r["chosen"], r["name"].lower()),
+        "price": lambda r: (r["price"] or 0, r["name"].lower()),
     }
     rows.sort(key=keys.get(sort, keys["name"]), reverse=direction == "desc")
 
@@ -891,9 +898,9 @@ def supply_edit(supply_id):
     supply = supply_or_404(supply_id)
     if request.method == "POST":
         try:
-            name, category, note = read_supply_form()
-            db.execute("UPDATE supplies SET name = ?, category = ?, note = ? WHERE id = ?",
-                       (name, category, note, supply_id))
+            name, category, price, note = read_supply_form()
+            db.execute("UPDATE supplies SET name = ?, category = ?, price = ?, note = ? WHERE id = ?",
+                       (name, category, price, note, supply_id))
             flash("Rechizit actualizat.", "ok")
             return redirect(url_for("supplies"))
         except ValueError as e:
@@ -983,6 +990,11 @@ def supply_vote(supply_id):
     return redirect(safe_next(request.form.get("next")) or url_for("supplies"))
 
 
+def lei(bani):
+    """Suma din bani in format pentru Excel romanesc (virgula zecimala); gol daca nu exista."""
+    return "" if bani is None else f"{bani / 100:.2f}".replace(".", ",")
+
+
 @app.route("/export/supplies.csv")
 @staff_required
 def export_supplies():
@@ -999,8 +1011,10 @@ def export_supplies():
     rows = sorted(supply_rows(), key=lambda r: (r["category"].lower(), r["name"].lower()))
     return csv_response(
         "rechizite.csv",
-        ["Rechizit", "Categorie", "De comandat (buc.)", "Ales de", "Plătit de", "Primit de", "Observații"],
-        [(csv_safe(r["name"]), csv_safe(r["category"]), r["chosen"],
+        ["Rechizit", "Categorie", "Preț (lei)", "De comandat (buc.)", "Total de comandat (lei)", "Ales de",
+         "Plătit de", "Primit de", "Observații"],
+        [(csv_safe(r["name"]), csv_safe(r["category"]), lei(r["price"]), r["chosen"],
+          lei(r["price"] * r["chosen"]) if r["price"] is not None else "",
           csv_safe("; ".join(chosen.get(r["id"], []))), csv_safe("; ".join(paid.get(r["id"], []))),
           csv_safe("; ".join(received.get(r["id"], []))), csv_safe(r["note"] or "")) for r in rows],
     )

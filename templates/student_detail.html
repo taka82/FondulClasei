@@ -10,11 +10,12 @@
   <h2>Rechizite</h2>
   {% if student_supplies %}
   <div class="scroll"><table>
-    <thead><tr><th>Rechizit</th><th>Categorie</th><th>Ales</th><th>Plătit</th><th>Primit</th></tr></thead>
+    <thead><tr><th>Rechizit</th><th>Categorie</th><th class="num">Preț</th><th>Ales</th><th>Plătit</th><th>Primit</th></tr></thead>
     {% for t in student_supplies %}
     <tr>
       <td><a class="item-name" href="{{ url_for('supply_detail', supply_id=t['id']) }}">{{ t['name'] }}</a></td>
       <td><span class="tag">{{ t['category'] }}</span></td>
+      <td class="num nowrap">{% if t['price'] %}{{ t['price']|money }}{% else %}<span class="muted">—</span>{% endif %}</td>
       <td>{% if t['chosen'] %}<span class="badge ok">Ales</span>{% else %}<span class="muted">—</span>{% endif %}</td>
       <td>{% if t['paid'] %}<span class="badge ok">Plătit</span>{% elif t['chosen'] %}<span class="badge warn">Neplătit</span>{% else %}<span class="muted">—</span>{% endif %}</td>
       <td>{% if t['received'] %}<span class="badge ok">Primit</span>{% elif t['paid'] %}<span class="badge warn">Neprimit</span>{% else %}<span class="muted">—</span>{% endif %}</td>

@@ -10,6 +10,9 @@
       <input name="category" list="supply-cats" maxlength="50" value="{{ request.form.get('category', supply['category']) }}">
       <datalist id="supply-cats">{% for c in categories %}<option value="{{ c }}">{% endfor %}</datalist>
     </label>
+    <label>Preț (lei, opțional)
+      <input name="price" inputmode="decimal" placeholder="ex: 45,50" value="{{ request.form.get('price', money_to_input(supply['price']) if supply['price'] else '') }}">
+    </label>
     <label>Observații <input name="note" maxlength="300" value="{{ request.form.get('note', supply['note'] or '') }}"></label>
     <div class="row-actions">
       <button class="btn">Salvează</button>

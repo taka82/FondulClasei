@@ -34,6 +34,7 @@
       <input name="category" list="supply-cats" maxlength="50" placeholder="ex: Caiete">
       <datalist id="supply-cats">{% for c in categories %}<option value="{{ c }}">{% endfor %}</datalist>
     </label>
+    <label>Preț (lei, opțional) <input name="price" inputmode="decimal" placeholder="ex: 45,50"></label>
     <label class="span2">Observații <input name="note" maxlength="300" placeholder="ex: cu liniatură tip II"></label>
     <button class="btn">Adaugă</button>
   </form>
@@ -44,7 +45,7 @@
   {% if supplies %}
   <div class="scroll"><table id="supplies-table">
     <thead><tr>
-      {{ sort_th('name', 'Rechizit') }}{{ sort_th('cat', 'Categorie') }}{{ sort_th('votes', 'De comandat', 'num') }}
+      {{ sort_th('name', 'Rechizit') }}{{ sort_th('cat', 'Categorie') }}{{ sort_th('price', 'Preț', 'num') }}{{ sort_th('votes', 'De comandat', 'num') }}
       <th class="num">Plătit</th><th class="num">Primit</th>
       <th>{{ 'Acțiuni' if is_staff else 'Copilul meu' }}</th>
     </tr></thead>
@@ -53,6 +54,7 @@
     </tbody>
   </table></div>
   <p class="muted small">
+    <strong>Preț</strong> = prețul unei bucăți (informativ).
     <strong>De comandat</strong> = câți elevi au votat rechizitul (au bifat „Ales”): fiecare vot înseamnă o bucată.
     <strong>Plătit</strong> și <strong>Primit</strong> = câți elevi au achitat, respectiv au primit rechizitul.
   </p>

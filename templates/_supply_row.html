@@ -4,6 +4,7 @@
     {% if s['note'] %}<span class="muted small block">{{ s['note'] }}</span>{% endif %}
   </td>
   <td><span class="tag">{{ s['category'] }}</span></td>
+  <td class="num nowrap">{% if s['price'] %}{{ s['price']|money }}{% else %}<span class="muted">—</span>{% endif %}</td>
   <td class="num"><strong class="order">{{ s['chosen'] }}</strong>{% if total %} <span class="muted small">din {{ total }}</span>{% endif %}</td>
   <td class="num cnt-paid">{{ s['paid'] }}</td>
   <td class="num cnt-received">{{ s['received'] }}</td>
