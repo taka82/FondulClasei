@@ -110,6 +110,17 @@ def main():
     assert r.status_code == 403
     assert parent.get("/export/expenses.csv").status_code == 200
 
+    # meniul: casierul are alta ordine decat parintele
+    def menu(html):
+        nav = re.search(r"<nav.*?</nav>", html, re.S).group(0)
+        return re.findall(r'<a href="[^"]*"[^>]*>([^<]+)</a>', nav)
+
+    assert menu(parent.get("/students/1").get_data(as_text=True)) == ["Situația mea", "Rechizite", "Cheltuieli", "Panou"]
+    assert menu(parent.get("/").get_data(as_text=True)) == ["Situația mea", "Rechizite", "Cheltuieli", "Panou"]
+    assert menu(admin.get("/").get_data(as_text=True)) == ["Panou", "Elevi", "Contribuții", "Rechizite", "Cheltuieli", "Conturi", "Setări"]
+    assert 'class="on">Situația mea' in parent.get("/students/1").get_data(as_text=True)
+    assert 'class="on">Panou' in parent.get("/").get_data(as_text=True)
+
     # --- rechizite: cantitatea de comandat vine din voturi (bifa "Ales")
     def ajax(client, url, data, page="/supplies"):
         return client.post(url, data={**data, "csrf": token(client, page)}, headers={"X-Requested-With": "fetch"})
@@ -260,6 +271,11 @@ def main():
     assert row(mine_page, "Engleza") and row(mine_page, "Caiet dictando") and not row(mine_page, "Foarfeca")
     assert 'badge ok">Plătit' in mine_page, "manualul platit apare cu starea Plătit"
     assert 'badge warn">Neplătit' in mine_page, "rechizitul ales dar neplatit apare ca Neplătit"
+    # ordinea sectiunilor: la parinte Rechizite e prima; la casier contributiile raman primele
+    assert mine_page.index("<h2>Rechizite</h2>") < mine_page.index("<h2>Contribuții</h2>") < mine_page.index("<h2>Istoric plăți</h2>")
+    adm_page = admin.get("/students/1").get_data(as_text=True)
+    assert adm_page.index("<h2>Contribuții</h2>") < adm_page.index("<h2>Rechizite</h2>") < adm_page.index("<h2>Istoric plăți</h2>")
+    assert adm_page.count("<h2>Rechizite</h2>") == 1 and mine_page.count("<h2>Rechizite</h2>") == 1
     # casierul vede aceleasi date pe pagina elevului, iar alt elev are doar rechizitele lui
     assert row(admin.get("/students/1").get_data(as_text=True), "Engleza")
     other = admin.get("/students/2").get_data(as_text=True)
