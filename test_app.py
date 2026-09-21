@@ -2,9 +2,9 @@
 
 Rulare: .venv\\Scripts\\python.exe test_app.py
 """
-import json
 import os
 import re
+import sqlite3
 import tempfile
 
 tmp = tempfile.mkdtemp()
@@ -110,46 +110,34 @@ def main():
     assert r.status_code == 403
     assert parent.get("/export/expenses.csv").status_code == 200
 
-    # --- rechizite
+    # --- rechizite: cantitatea de comandat vine din voturi (bifa "Ales")
     def ajax(client, url, data, page="/supplies"):
         return client.post(url, data={**data, "csrf": token(client, page)}, headers={"X-Requested-With": "fetch"})
 
-    r = post(admin, "/supplies", {"name": "Caiet dictando", "category": "Caiete", "qty": "3", "note": "tip II"}, page="/supplies")
+    def sql(query, *params):
+        c = sqlite3.connect(os.environ["FOND_DB"])
+        try:
+            return c.execute(query, params).fetchall()
+        finally:
+            c.close()
+
+    r = post(admin, "/supplies", {"name": "Caiet dictando", "category": "Caiete", "note": "tip II"}, page="/supplies")
     assert "Rechizit adăugat" in r.get_data(as_text=True)
-    post(admin, "/supplies", {"name": "Engleza", "category": "Manual", "qty": "3", "bought": "9"}, page="/supplies")  # cumparat limitat la cantitate
-    r = post(admin, "/supplies", {"name": "", "qty": "1"}, page="/supplies")
+    post(admin, "/supplies", {"name": "Engleza", "category": "Manual", "qty": "99", "bought": "9"}, page="/supplies")  # campurile vechi sunt ignorate
+    r = post(admin, "/supplies", {"name": ""}, page="/supplies")
     assert "Denumirea este obligatorie" in r.get_data(as_text=True)
-    post(admin, "/supplies", {"name": "Foarfeca", "qty": "abc"}, page="/supplies")  # cantitate invalida -> 1, categorie -> General
+    post(admin, "/supplies", {"name": "Foarfeca"}, page="/supplies")  # categorie implicita: General
+    assert sql("SELECT category FROM supplies WHERE id = 3") == [("General",)]
+    assert sql("PRAGMA user_version")[0][0] >= 2
+
+    # pagina nu mai arata cantitate / cumparat / status / butoane -/+
     page_html = admin.get("/supplies").get_data(as_text=True)
-    assert "General" in page_html and "tip II" in page_html
-    conn = __import__("sqlite3").connect(os.environ["FOND_DB"])
-    assert conn.execute("SELECT qty, bought FROM supplies WHERE id = 2").fetchone() == (3, 3)
-    assert conn.execute("SELECT qty FROM supplies WHERE id = 3").fetchone() == (1,)
-    assert conn.execute("PRAGMA user_version").fetchone()[0] >= 2
-    conn.close()
+    assert "General" in page_html and "tip II" in page_html and "De comandat" in page_html
+    for gone in ("Cantitate", "Cumpărat", "Cumpărate", "Parțial", 'class="stepper"', "/adjust"):
+        assert gone not in page_html, f"nu mai trebuie afisat: {gone}"
+    assert admin.post("/supplies/1/adjust", data={"csrf": token(admin, "/supplies")}).status_code == 404
 
-    # statusuri: 0 cumparate = De cumparat, toate = Cumparat, intre = Partial
-    r = ajax(admin, "/supplies/1/adjust", {"field": "bought", "delta": "1"}).get_data(as_text=True)
-    assert "Parțial" in r and r.lstrip().startswith("<tr"), "raspunsul AJAX trebuie sa fie randul actualizat"
-    resp = ajax(admin, "/supplies/1/adjust", {"field": "bought", "delta": "-1"})
-    assert json.loads(resp.headers["X-Supply-Stats"]) == {"total": 3, "necesar": 2, "partial": 0, "cumparat": 1}
-    ajax(admin, "/supplies/1/adjust", {"field": "bought", "delta": "1"})  # inapoi la 1 cumparat
-    for _ in range(5):
-        r = ajax(admin, "/supplies/1/adjust", {"field": "bought", "delta": "1"}).get_data(as_text=True)
-    assert "Cumpărat" in r and 'class="qty-num">3<' in r, "cumparat nu poate depasi cantitatea"
-    r = ajax(admin, "/supplies/1/adjust", {"field": "qty", "delta": "-1"}).get_data(as_text=True)
-    assert r.count('class="qty-num">2<') == 2, "scazand cantitatea, cumparat se limiteaza la ea"
-    for _ in range(5):
-        r = ajax(admin, "/supplies/1/adjust", {"field": "qty", "delta": "-1"}).get_data(as_text=True)
-    assert r.count('class="qty-num">1<') == 2, "cantitatea minima este 1"
-    assert ajax(admin, "/supplies/1/adjust", {"field": "nume", "delta": "1"}).status_code == 400
-    assert ajax(admin, "/supplies/1/adjust", {"field": "qty", "delta": "5"}).status_code == 400
-    ajax(admin, "/supplies/1/adjust", {"field": "qty", "delta": "1"})
-    ajax(admin, "/supplies/1/adjust", {"field": "qty", "delta": "1"})   # inapoi la 3
-    ajax(admin, "/supplies/1/adjust", {"field": "bought", "delta": "-1"})
-    ajax(admin, "/supplies/1/adjust", {"field": "bought", "delta": "-1"})  # 3 -> 1 cumparate
-
-    # bife per elev
+    # bife per elev; "De comandat" = numarul de voturi (Ales)
     d = "/supplies/1"
     r = ajax(admin, d + "/track", {"student_id": "1", "chosen": "1", "paid": "1"}, page=d)
     assert r.get_json() == {"chosen": 1, "paid": 1, "received": 0}
@@ -158,20 +146,39 @@ def main():
     r = ajax(admin, d + "/track", {"student_id": "1", "chosen": "1", "received": "1"}, page=d)  # paid debifat
     assert r.get_json() == {"chosen": 2, "paid": 0, "received": 1}
     assert admin.post(d + "/track", data={"csrf": token(admin, d), "student_id": "999"}).status_code == 404
+    with fond.app.app_context():
+        assert fond.supply_stats() == {"total": 3, "cu_voturi": 1, "fara_voturi": 2, "de_comandat": 2}
     listing = admin.get("/supplies").get_data(as_text=True)
-    assert "2/3" in listing, "2 elevi din 3 au ales"
+    assert 'class="order">2<' in listing and "din 3" in listing, "2 voturi din 3 elevi"
     detail = admin.get(d).get_data(as_text=True)
     assert "Popescu Ana" in detail and "Ionescu Mihai" in detail and "Vasile Dan" in detail
-    assert 'name="chosen"' in detail
+    assert 'name="chosen"' in detail and 'id="c-order">2<' in detail and "de comandat" in detail
+    assert "Rechizite:" in admin.get("/").get_data(as_text=True)
+    assert "2 bucăți de comandat" in admin.get("/").get_data(as_text=True)
 
-    # filtre, cautare, sortare
-    assert "Engleza" in admin.get("/supplies?status=cumparat").get_data(as_text=True)
-    assert "Foarfeca" not in admin.get("/supplies?status=cumparat").get_data(as_text=True)
+    # un elev dezactivat nu mai conteaza la voturi
+    post(admin, "/students/2/toggle", {}, page="/students")
+    with fond.app.app_context():
+        assert fond.supply_stats()["de_comandat"] == 1
+    post(admin, "/students/2/toggle", {}, page="/students")
+    with fond.app.app_context():
+        assert fond.supply_stats()["de_comandat"] == 2
+
+    # filtre, cautare, sortare (se verifica linkurile din tabel, nu textul-exemplu din formular)
+    row = lambda html, name: f">{name}</a>" in html
+    cu = admin.get("/supplies?votes=cu").get_data(as_text=True)
+    assert row(cu, "Caiet dictando") and not row(cu, "Foarfeca") and not row(cu, "Engleza")
+    fara = admin.get("/supplies?votes=fara").get_data(as_text=True)
+    assert not row(fara, "Caiet dictando") and row(fara, "Foarfeca") and row(fara, "Engleza")
     only_caiete = admin.get("/supplies?cat=Caiete").get_data(as_text=True)
-    assert "Caiet dictando" in only_caiete and "Foarfeca" not in only_caiete
-    assert "Foarfeca" in admin.get("/supplies?q=foar").get_data(as_text=True)
+    assert row(only_caiete, "Caiet dictando") and not row(only_caiete, "Foarfeca")
+    assert row(admin.get("/supplies?q=foar").get_data(as_text=True), "Foarfeca")
     assert "nu se potrivește" in admin.get("/supplies?q=zzzz").get_data(as_text=True)
-    for sort in ("name", "cat", "qty", "status", "invalid"):
+    desc = admin.get("/supplies?sort=votes&dir=desc").get_data(as_text=True)
+    assert desc.index(">Caiet dictando</a>") < desc.index(">Engleza</a>"), "sortare descrescatoare dupa voturi"
+    asc = admin.get("/supplies?sort=votes&dir=asc").get_data(as_text=True)
+    assert asc.index(">Engleza</a>") < asc.index(">Caiet dictando</a>"), "sortare crescatoare dupa voturi"
+    for sort in ("name", "cat", "votes", "invalid"):
         assert admin.get(f"/supplies?sort={sort}&dir=desc").status_code == 200
 
     # parintele: doar citire, vede doar bifele copilului lui
@@ -179,29 +186,28 @@ def main():
     assert "Popescu Ana" in pd and "Ionescu Mihai" not in pd and "Vasile Dan" not in pd
     assert 'name="chosen"' not in pd and "disabled" in pd
     pl = parent.get("/supplies").get_data(as_text=True)
-    assert "Copilul meu" in pl and "Caiet dictando" in pl and 'class="stepper"' in pl and 'action="/supplies/1/adjust"' not in pl
+    assert "Copilul meu" in pl and row(pl, "Caiet dictando") and 'class="order">2<' in pl
     assert "Rechizite:" in parent.get("/").get_data(as_text=True)
-    for url, data in (("/supplies", {"name": "X"}), ("/supplies/1/adjust", {"field": "qty", "delta": "1"}),
-                      ("/supplies/1/track", {"student_id": "1", "chosen": "1"}), ("/supplies/1/edit", {"name": "X"}),
-                      ("/supplies/1/delete", {})):
+    for url, data in (("/supplies", {"name": "X"}), ("/supplies/1/track", {"student_id": "1", "chosen": "1"}),
+                      ("/supplies/1/edit", {"name": "X"}), ("/supplies/1/delete", {})):
         assert parent.post(url, data={**data, "csrf": token(parent, "/supplies")}).status_code == 403, url
     assert parent.get("/supplies/1/edit").status_code == 403
     assert parent.get("/export/supplies.csv").status_code == 403
     assert parent.get("/supplies/999").status_code == 404
 
-    # export (admin): numele elevilor pe coloane
-    csv_text = admin.get("/export/supplies.csv").get_data(as_text=True)
-    assert csv_text.startswith("﻿Rechizit;Categorie") and "Ionescu Mihai; Popescu Ana" in csv_text.replace("\r", "")
+    # export (admin): cantitatea de comandat si numele elevilor pe coloane
+    csv_text = admin.get("/export/supplies.csv").get_data(as_text=True).replace("\r", "")
+    assert csv_text.startswith("\ufeffRechizit;Categorie;De comandat (buc.);Ales de")
+    assert 'Caiet dictando;Caiete;2;"Ionescu Mihai; Popescu Ana"' in csv_text
+    assert "Cantitate" not in csv_text and "Status" not in csv_text
 
     # editare si stergere (bifele se sterg odata cu rechizitul)
-    r = post(admin, "/supplies/3/edit", {"name": "Foarfeca mare", "category": "Diverse", "qty": "2", "bought": "1"}, page="/supplies/3/edit")
+    r = post(admin, "/supplies/3/edit", {"name": "Foarfeca mare", "category": "Diverse", "note": "cu varf rotund"}, page="/supplies/3/edit")
     assert "Rechizit actualizat" in r.get_data(as_text=True) and "Foarfeca mare" in r.get_data(as_text=True)
     r = post(admin, "/supplies/1/delete", {}, page="/supplies")
     body = r.get_data(as_text=True)
-    assert "Rechizit șters" in body and '<span class="item-name">Caiet dictando' not in body
-    conn = __import__("sqlite3").connect(os.environ["FOND_DB"])
-    assert conn.execute("SELECT COUNT(*) FROM supply_tracking WHERE supply_id = 1").fetchone()[0] == 0
-    conn.close()
+    assert "Rechizit șters" in body and 'class="item-name" href="/supplies/1"' not in body
+    assert sql("SELECT COUNT(*) FROM supply_tracking WHERE supply_id = 1") == [(0,)]
 
     # neautentificat
     anon = fond.app.test_client()

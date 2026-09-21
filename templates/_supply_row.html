@@ -1,23 +1,12 @@
-{% from "_macros.html" import stepper %}
-{% set st = supply_status(s['bought'], s['qty']) %}
-<tr data-id="{{ s['id'] }}">
+<tr>
   <td>
-    <span class="item-name">{{ s['name'] }}</span>
+    <a class="item-name" href="{{ url_for('supply_detail', supply_id=s['id']) }}">{{ s['name'] }}</a>
     {% if s['note'] %}<span class="muted small block">{{ s['note'] }}</span>{% endif %}
   </td>
   <td><span class="tag">{{ s['category'] }}</span></td>
-  <td>{{ stepper(s, 'qty', is_admin) }}</td>
-  <td>{{ stepper(s, 'bought', is_admin) }}</td>
-  <td><span class="badge {{ SUPPLY_STATUS[st][1] }}">{{ SUPPLY_STATUS[st][0] }}</span></td>
-  <td>
-    {% if total %}
-      <div class="mini" title="Ales: {{ s['chosen'] }} · Plătit: {{ s['paid'] }} · Primit: {{ s['received'] }}">
-        <span class="small muted">{{ s['chosen'] }}/{{ total }}</span>
-        <div class="bar"><i style="width: {{ (s['received'] * 100 / total)|round|int }}%"></i></div>
-      </div>
-      <a class="small" href="{{ url_for('supply_detail', supply_id=s['id']) }}">detalii</a>
-    {% else %}<span class="muted small">—</span>{% endif %}
-  </td>
+  <td class="num"><strong class="order">{{ s['chosen'] }}</strong>{% if total %} <span class="muted small">din {{ total }}</span>{% endif %}</td>
+  <td class="num">{{ s['paid'] }}</td>
+  <td class="num">{{ s['received'] }}</td>
   {% if not is_admin %}
   <td>
     {% set m = mine.get(s['id']) %}
@@ -29,6 +18,7 @@
   </td>
   {% else %}
   <td class="actions nowrap">
+    <a href="{{ url_for('supply_detail', supply_id=s['id']) }}">Bifează</a>
     <a href="{{ url_for('supply_edit', supply_id=s['id']) }}">Modifică</a>
     <form method="post" action="{{ url_for('supply_delete', supply_id=s['id']) }}" class="inline"
           onsubmit="return confirm('Ștergi rechizitul și bifele asociate?')">

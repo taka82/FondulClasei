@@ -3,11 +3,9 @@
 {% block content %}
 <p class="crumb"><a href="{{ url_for('supplies') }}">← Rechizite</a></p>
 <h1>{{ supply['name'] }}</h1>
-{% set st = supply_status(supply['bought'], supply['qty']) %}
 <p class="muted">
   <span class="tag">{{ supply['category'] }}</span>
-  · cumpărat {{ supply['bought'] }} din {{ supply['qty'] }}
-  <span class="badge {{ SUPPLY_STATUS[st][1] }}">{{ SUPPLY_STATUS[st][0] }}</span>
+  · <strong id="c-order">{{ supply['chosen'] }}</strong> de comandat (din {{ total }} elevi)
   {% if supply['note'] %}· {{ supply['note'] }}{% endif %}
 </p>
 
@@ -18,7 +16,7 @@
     <span><i class="dot received"></i> <strong>Primit</strong> – rechizitul a ajuns la elev</span>
   </p>
   <p class="totals">
-    Ales: <strong id="c-chosen">{{ supply['chosen'] }}</strong> ·
+    Ales (de comandat): <strong id="c-chosen">{{ supply['chosen'] }}</strong> ·
     Plătit: <strong id="c-paid">{{ supply['paid'] }}</strong> ·
     Primit: <strong id="c-received">{{ supply['received'] }}</strong>
     <span class="muted">din {{ total }} elevi</span>
@@ -72,6 +70,7 @@
       if (!res.ok) throw new Error(res.status);
       const counts = await res.json();
       for (const k of ['chosen', 'paid', 'received']) document.getElementById('c-' + k).textContent = counts[k];
+      document.getElementById('c-order').textContent = counts.chosen;
     } catch (err) {
       box.checked = !box.checked;   // anuleaza bifa daca nu s-a salvat
       alert('Nu s-a putut salva. Reîncarcă pagina și încearcă din nou.');

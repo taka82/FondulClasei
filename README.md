@@ -44,15 +44,17 @@ Părinții nu văd plățile altor elevi.
 
 ### Rechizite
 
-Pagina **Rechizite** ține lista de rechizite ale clasei (categorie, cantitate, câte s-au cumpărat, observații) și, pentru fiecare, bifele per elev:
+Pagina **Rechizite** ține lista de rechizite ale clasei (denumire, categorie, observații) și, pentru fiecare, bifele per elev:
 
-- **Ales**: elevul s-a oferit să cumpere rechizitul
+- **Ales**: elevul votează rechizitul (se oferă să îl cumpere)
 - **Plătit**: a achitat suma
 - **Primit**: rechizitul a ajuns la elev
 
-Statusul e calculat singur: 0 cumpărate = *De cumpărat*, toate = *Cumpărat*, între ele = *Parțial*. Butoanele − / + schimbă cantitatea și numărul de cumpărate, iar în pagina *detalii* a rechizitului bifezi fiecare elev (se salvează imediat). Există căutare, filtre pe categorie și status, sortare pe coloane și export CSV (cu numele elevilor).
+**Cât trebuie comandat** rezultă din voturi: fiecare elev activ care a bifat „Ales” înseamnă o bucată. Coloana *De comandat* din listă arată numărul de voturi (din totalul de elevi), iar sus apar totalul de bucăți de comandat, câte rechizite au voturi și câte nu. În pagina *detalii* a rechizitului (link „Bifează”) bifezi fiecare elev, iar bifele se salvează imediat. Există căutare, filtre pe categorie și pe voturi (cu / fără), sortare pe coloane și export CSV (cu numele elevilor și „De comandat”).
 
-Casierul editează tot. Părinții văd lista, statusurile și numărul total de elevi care au ales/plătit/primit, dar la nivel de elev **doar bifele copilului lor**.
+Casierul editează tot. Părinții văd lista, numărul de voturi și cât au plătit/primit elevii în total, dar la nivel de elev **doar bifele copilului lor**.
+
+Tabelul `supplies` mai are coloanele vechi `qty` și `bought` (cantitate, cumpărat); nu se mai folosesc și nu se afișează.
 
 Un elev transferat se **dezactivează**: nu mai apare la restanțe, dar plățile lui rămân în sold. Elevii și contribuțiile cu plăți înregistrate nu pot fi șterse.
 
