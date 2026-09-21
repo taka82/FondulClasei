@@ -5,8 +5,8 @@
   </td>
   <td><span class="tag">{{ s['category'] }}</span></td>
   <td class="num"><strong class="order">{{ s['chosen'] }}</strong>{% if total %} <span class="muted small">din {{ total }}</span>{% endif %}</td>
-  <td class="num">{{ s['paid'] }}</td>
-  <td class="num">{{ s['received'] }}</td>
+  <td class="num cnt-paid">{{ s['paid'] }}</td>
+  <td class="num cnt-received">{{ s['received'] }}</td>
   {% if not is_admin %}
   <td>
     {% set m = mine.get(s['id']) %}
@@ -15,15 +15,17 @@
       <form method="post" action="{{ url_for('supply_vote', supply_id=s['id']) }}" class="vote">
         <input type="hidden" name="csrf" value="{{ csrf_token() }}">
         <label class="votebox" title="Bifează dacă vrei acest rechizit pentru copilul tău">
-          <input type="checkbox" class="ck chosen" name="chosen" value="1" {{ 'checked' if m and m['chosen'] }}> Ales
+          <input type="checkbox" class="ck chosen" data-field="chosen" {{ 'checked' if m and m['chosen'] }}> Ales
         </label>
-        <noscript><button class="btn small">Salvează</button></noscript>
+        <label class="votebox" title="Bifează dacă copilul tău a primit rechizitul">
+          <input type="checkbox" class="ck received" data-field="received" {{ 'checked' if m and m['received'] }}> Primit
+        </label>
       </form>
       {% else %}
       <span class="pip {{ 'on chosen' if m and m['chosen'] }}" title="Ales">Ales</span>
+      <span class="pip {{ 'on received' if m and m['received'] }}" title="Primit">Primit</span>
       {% endif %}
       <span class="pip {{ 'on paid' if m and m['paid'] }}" title="Plătit (îl bifează casierul)">Plătit</span>
-      <span class="pip {{ 'on received' if m and m['received'] }}" title="Primit (îl bifează casierul)">Primit</span>
     </span>
   </td>
   {% else %}

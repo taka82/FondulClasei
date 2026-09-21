@@ -23,7 +23,7 @@
   </p>
   {% if not is_admin %}
     <p class="muted small">Vezi doar situația copilului tău.
-      {% if can_vote %}Bifează <strong>Ales</strong> dacă vrei acest rechizit; <strong>Plătit</strong> și <strong>Primit</strong> le bifează casierul.{% endif %}</p>
+      {% if can_vote %}Bifează <strong>Ales</strong> dacă vrei acest rechizit și <strong>Primit</strong> dacă l-ai primit; <strong>Plătit</strong> îl bifează casierul.{% endif %}</p>
   {% endif %}
 
   <div class="scroll"><table class="track">
@@ -48,10 +48,9 @@
       <td colspan="3" class="trackcell">
         <form method="post" action="{{ url_for('supply_vote', supply_id=supply['id']) }}" class="track-form">
           <input type="hidden" name="csrf" value="{{ csrf_token() }}">
-          <span class="c"><input type="checkbox" class="ck chosen" aria-label="Ales" {% if can_vote %}name="chosen" value="1"{% else %}disabled{% endif %} {{ 'checked' if r['chosen'] }}></span>
-          <span class="c"><input type="checkbox" class="ck paid" disabled aria-label="Plătit" {{ 'checked' if r['paid'] }}></span>
-          <span class="c"><input type="checkbox" class="ck received" disabled aria-label="Primit" {{ 'checked' if r['received'] }}></span>
-          <noscript>{% if can_vote %}<button class="btn small">Salvează</button>{% endif %}</noscript>
+          <span class="c"><input type="checkbox" class="ck chosen" aria-label="Ales" {% if can_vote %}data-field="chosen"{% else %}disabled{% endif %} {{ 'checked' if r['chosen'] }}></span>
+          <span class="c"><input type="checkbox" class="ck paid" disabled aria-label="Plătit" title="Îl bifează casierul" {{ 'checked' if r['paid'] }}></span>
+          <span class="c"><input type="checkbox" class="ck received" aria-label="Primit" {% if can_vote %}data-field="received"{% else %}disabled{% endif %} {{ 'checked' if r['received'] }}></span>
         </form>
       </td>
       {% endif %}
@@ -70,7 +69,15 @@
     if (!box) return;
     const form = box.closest('form');
     // citim valorile INAINTE de dezactivare: campurile dezactivate nu se trimit in formular
-    const body = new FormData(form);
+    let body;
+    if (box.dataset.field) {           // parinte: se trimite un singur camp, ca sa nu se atinga celelalte bife
+      body = new FormData();
+      body.set('csrf', form.querySelector('[name=csrf]').value);
+      body.set('field', box.dataset.field);
+      body.set('value', box.checked ? '1' : '0');
+    } else {                           // casier: tot randul
+      body = new FormData(form);
+    }
     box.disabled = true;
     let message = 'Nu s-a putut salva. Reîncarcă pagina și încearcă din nou.';
     try {

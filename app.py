@@ -897,27 +897,36 @@ def parent_student_id():
 @app.post("/supplies/<int:supply_id>/vote")
 @login_required
 def supply_vote(supply_id):
-    """Parintele voteaza (Ales) un rechizit pentru copilul lui. Plătit / Primit raman la casier.
+    """Parintele bifeaza "Ales" (vrea rechizitul) sau "Primit" (l-a primit) pentru copilul lui.
 
-    Elevul se ia din contul autentificat, niciodata din cerere.
+    "Plătit" ramane la casier. Se schimba un singur camp pe cerere (field + value), deci celelalte
+    bife nu pot fi atinse. Elevul se ia din contul autentificat, niciodata din cerere.
     """
     supply_or_404(supply_id)
     student_id = parent_student_id()
     if student_id is None:
         abort(403)
-    chosen = 1 if request.form.get("chosen") else 0
+    field, value = request.form.get("field"), request.form.get("value")
+    if field not in ("chosen", "received") or value not in ("0", "1"):
+        abort(400, "Cerere invalidă.")
+    new = int(value)
     current = db.one("SELECT paid, received FROM supply_tracking WHERE supply_id = ? AND student_id = ?",
                      (supply_id, student_id))
-    if not chosen and current and (current["paid"] or current["received"]):
-        message = "Nu poți retrage votul: rechizitul a fost deja plătit sau primit. Discută cu casierul."
+    message = None
+    if field == "chosen" and not new and current:
+        if current["paid"]:
+            message = "Nu poți retrage votul: rechizitul a fost deja plătit. Discută cu casierul."
+        elif current["received"]:
+            message = "Nu poți retrage votul cât rechizitul e marcat ca primit. Debifează întâi „Primit”."
+    if message:
         if wants_fragment():
             return {"error": message}, 409
         flash(message, "error")
         return redirect(url_for("supplies"))
-    db.execute(
-        "INSERT INTO supply_tracking(supply_id, student_id, chosen) VALUES (?, ?, ?) "
-        "ON CONFLICT(supply_id, student_id) DO UPDATE SET chosen = excluded.chosen",
-        (supply_id, student_id, chosen),
+    db.execute(  # field e validat mai sus (chosen / received), deci poate intra in interogare
+        f"INSERT INTO supply_tracking(supply_id, student_id, {field}) VALUES (?, ?, ?) "
+        f"ON CONFLICT(supply_id, student_id) DO UPDATE SET {field} = excluded.{field}",
+        (supply_id, student_id, new),
     )
     if wants_fragment():
         counts = supply_or_404(supply_id)

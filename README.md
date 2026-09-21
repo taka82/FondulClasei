@@ -29,7 +29,7 @@ Variabile opționale: `FOND_HOST`, `FOND_PORT`, `FOND_DB` (calea fișierului SQL
 | Rol | Poate |
 |---|---|
 | **Casier** | Tot: elevi, contribuții, plăți, cheltuieli, conturi, setări, exporturi |
-| **Părinte** | Citire: soldul, cheltuielile clasei și situația plăților propriului copil. La Rechizite poate bifa „Ales” pentru copilul lui (nimic altceva) |
+| **Părinte** | Citire: soldul, cheltuielile clasei și situația plăților propriului copil. La Rechizite poate bifa „Ales” și „Primit” pentru copilul lui (nu și „Plătit”) |
 
 Părinții nu văd plățile altor elevi.
 
@@ -57,9 +57,9 @@ Pagina **Rechizite** ține lista de rechizite ale clasei (denumire, categorie, o
 | | Ales | Plătit | Primit |
 |---|---|---|---|
 | **Casier** (administrator) | da, pentru orice elev | da | da |
-| **Părinte** | da, **doar pentru copilul lui** | nu | nu |
+| **Părinte** | da, **doar pentru copilul lui** | nu | da, **doar pentru copilul lui** |
 
-Părintele bifează „Ales” direct din lista de rechizite (sau din pagina rechizitului) și se salvează imediat. Dacă rechizitul a fost deja plătit sau primit, părintele nu mai poate retrage votul (trebuie să discute cu casierul). Elevul se stabilește din contul părintelui, nu din cerere, așa că nu se poate vota pentru alt copil. La nivel de elev, părinții văd **doar bifele copilului lor**, plus totalurile (câți au votat, plătit, primit).
+Părintele bifează „Ales” (vrea rechizitul) și „Primit” (l-a primit) direct din lista de rechizite sau din pagina rechizitului, iar bifele se salvează imediat. „Plătit” îl bifează doar casierul. Cât timp rechizitul e plătit sau primit, părintele nu poate retrage votul „Ales” (dacă „Primit” l-a bifat el, îl debifează întâi; dacă e plătit, discută cu casierul). Elevul se stabilește din contul părintelui, nu din cerere, așa că nu se poate vota pentru alt copil. La nivel de elev, părinții văd **doar bifele copilului lor**, plus totalurile (câți au votat, plătit, primit).
 
 Tabelul `supplies` mai are coloanele vechi `qty` și `bought` (cantitate, cumpărat); nu se mai folosesc și nu se afișează.
 
