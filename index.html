@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Foldul Clasei – Rechizite</title>
+  <!-- ╔══════════════════════════════════════════════════════╗
+       ║  CONFIGURARE FIREBASE – înlocuiește valorile de jos ║
+       ╚══════════════════════════════════════════════════════╝
+       Urmează instrucțiunile din README.md pentru a obține
+       aceste valori din consola Firebase.                    -->
+  <script type="module">
+    import { initializeApp }         from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+    import { getDatabase, ref, set, onValue, update, remove }
+                                     from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey:            "AIzaSyBzG6RoPdbotOaFSefVhWeQtPIjElO91UI",
+      authDomain:        "fondul-clasei-74d60.firebaseapp.com",
+      databaseURL:       "https://fondul-clasei-74d60-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId:         "fondul-clasei-74d60",
+      storageBucket:     "fondul-clasei-74d60.firebasestorage.app",
+      messagingSenderId: "364311309357",
+      appId:             "1:364311309357:web:08668c964f2badc8531ca4"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db  = getDatabase(app);
+
+    // Expune db și funcțiile Firebase pe window pentru scriptul principal
+    window.__fb = { db, ref, set, onValue, update, remove };
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f4f6fb;
+      --surface: #ffffff;
+      --border: #dde1ea;
+      --text: #1e2230;
+      --muted: #6b7280;
+      --accent: #4f7ef8;
+      --accent-dark: #3a63d4;
+      --danger: #ef4444;
+      --danger-dark: #c53030;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --tag-bg: #eef2ff;
+      --tag-text: #3a63d4;
+    }
+
+    body { font-family: -apple-system, "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* ── Header ── */
+    header {
+      background: var(--accent); color: #fff;
+      padding: 16px 28px;
+      display: flex; align-items: center; gap: 12px;
+      box-shadow: 0 2px 8px rgba(79,126,248,.25);
+    }
+    header .icon { font-size: 26px; }
+    header h1 { font-size: 1.25rem; font-weight: 700; line-height: 1.2; }
+    header p  { font-size: .8rem; opacity: .85; }
+    header .spacer { flex: 1; }
+    header .cls-badge {
+      background: rgba(255,255,255,.2); border-radius: 8px; padding: 6px 14px;
+      font-size: .84rem; font-weight: 600; cursor: pointer;
+      border: 1px solid rgba(255,255,255,.35); color: #fff; transition: background .15s;
+    }
+    header .cls-badge:hover { background: rgba(255,255,255,.3); }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex; gap: 0;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 28px;
+    }
+    .tab-btn {
+      padding: 13px 22px; font-size: .9rem; font-weight: 600;
+      background: none; border: none; border-bottom: 3px solid transparent;
+      color: var(--muted); cursor: pointer; transition: color .15s, border-color .15s;
+      margin-bottom: -1px;
+    }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .tab-btn:hover:not(.active) { color: var(--text); }
+
+    /* ── Layout ── */
+    .wrapper { max-width: 1060px; margin: 0 auto; padding: 26px 20px 60px; }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+
+    /* ── Summary cards ── */
+    .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 12px; margin-bottom: 24px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 18px; }
+    .card .lbl { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
+    .card .val { font-size: 1.6rem; font-weight: 700; }
+    .card.c-total   .val { color: var(--accent); }
+    .card.c-need    .val { color: var(--danger); }
+    .card.c-ok      .val { color: var(--success); }
+    .card.c-partial .val { color: var(--warning); }
+    .card.c-pupils  .val { color: #7c5cd8; }
+
+    /* ── Toolbar ── */
+    .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 16px; }
+    .toolbar input[type="text"] {
+      flex: 1; min-width: 160px; padding: 8px 13px;
+      border: 1px solid var(--border); border-radius: 8px;
+      font-size: .88rem; background: var(--surface); color: var(--text);
+      outline: none; transition: border-color .15s;
+    }
+    .toolbar input[type="text"]:focus { border-color: var(--accent); }
+    .toolbar select {
+      padding: 8px 11px; border: 1px solid var(--border); border-radius: 8px;
+      font-size: .86rem; background: var(--surface); color: var(--text); cursor: pointer; outline: none;
+    }
+    .btn {
+      padding: 8px 16px; border: none; border-radius: 8px;
+      font-size: .86rem; font-weight: 600; cursor: pointer;
+      transition: background .15s, transform .08s;
+    }
+    .btn:active { transform: scale(.97); }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-dark); }
+    .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    .btn-ghost:hover { background: var(--bg); }
+    .btn-sm { padding: 5px 12px; font-size: .8rem; }
+
+    /* ── Add panel ── */
+    .add-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; margin-bottom: 18px; display: none; }
+    .add-panel.open { display: block; }
+    .add-panel h3 { font-size: .92rem; margin-bottom: 12px; color: var(--muted); }
+    .form-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+    .form-group { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 130px; }
+    .form-group label { font-size: .76rem; color: var(--muted); }
+    .form-group input, .form-group select {
+      padding: 8px 11px; border: 1px solid var(--border); border-radius: 7px;
+      font-size: .87rem; color: var(--text); background: var(--surface); outline: none; transition: border-color .15s;
+    }
+    .form-group input:focus, .form-group select:focus { border-color: var(--accent); }
+
+    /* ── Table ── */
+    .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; font-size: .87rem; }
+    thead tr { background: var(--bg); }
+    thead th {
+      padding: 10px 13px; text-align: left;
+      font-size: .73rem; text-transform: uppercase; letter-spacing: .05em;
+      color: var(--muted); border-bottom: 1px solid var(--border); white-space: nowrap;
+    }
+    thead th.sort-asc::after  { content: " ▲"; }
+    thead th.sort-desc::after { content: " ▼"; }
+    thead th[data-sort] { cursor: pointer; user-select: none; }
+    thead th[data-sort]:hover { color: var(--accent); }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #f8f9ff; }
+    tbody td { padding: 10px 13px; vertical-align: middle; }
+
+    .item-name { font-weight: 600; }
+    .item-note { display: block; font-size: .76rem; color: var(--muted); margin-top: 2px; }
+
+    .cat-tag { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: .73rem; font-weight: 600; background: var(--tag-bg); color: var(--tag-text); }
+
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 9px; border-radius: 20px; font-size: .76rem; font-weight: 600;
+    }
+    .s-necesar  { background: #fee2e2; color: #b91c1c; }
+    .s-partial  { background: #fef3c7; color: #92400e; }
+    .s-cumparat { background: #dcfce7; color: #166534; }
+
+    .qty-ctrl { display: flex; align-items: center; gap: 5px; }
+    .qty-ctrl button { width: 24px; height: 24px; border: 1px solid var(--border); border-radius: 5px; background: var(--bg); cursor: pointer; font-size: .95rem; line-height: 1; transition: background .1s; }
+    .qty-ctrl button:hover { background: #e5e7eb; }
+    .qty-num { min-width: 26px; text-align: center; font-weight: 600; }
+
+    .row-actions { display: flex; gap: 5px; }
+    .icon-btn { background: none; border: none; cursor: pointer; font-size: .95rem; padding: 4px 5px; border-radius: 5px; transition: background .1s; color: var(--muted); }
+    .icon-btn:hover { background: var(--bg); color: var(--text); }
+    .icon-btn.del:hover { background: #fee2e2; color: var(--danger); }
+
+    .empty-state { text-align: center; padding: 44px 20px; color: var(--muted); }
+    .empty-state .big { font-size: 2.2rem; margin-bottom: 8px; }
+
+    /* ── Elevi tab – pupil list ── */
+    .pupil-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+    .pupil-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      padding: 14px 16px; display: flex; align-items: center; gap: 10px;
+    }
+    .pupil-avatar {
+      width: 38px; height: 38px; border-radius: 50%;
+      background: var(--tag-bg); color: var(--tag-text);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: .88rem; flex-shrink: 0;
+    }
+    .pupil-name { font-weight: 600; font-size: .9rem; }
+    .pupil-sub  { font-size: .76rem; color: var(--muted); margin-top: 2px; }
+    .pupil-actions { margin-left: auto; display: flex; gap: 4px; }
+
+    /* ── Detail modal ── */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 100; align-items: center; justify-content: center; padding: 16px; }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--surface); border-radius: 14px; padding: 24px 24px 20px;
+      width: 100%; max-width: 680px; max-height: 90vh;
+      display: flex; flex-direction: column;
+      box-shadow: 0 8px 32px rgba(0,0,0,.18);
+    }
+    .modal-header { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 16px; }
+    .modal-header h2 { font-size: 1.05rem; flex: 1; }
+    .modal-close { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--muted); padding: 2px 6px; border-radius: 5px; }
+    .modal-close:hover { background: var(--bg); }
+    .modal-body { overflow-y: auto; flex: 1; }
+    .modal-footer { margin-top: 14px; display: flex; justify-content: flex-end; gap: 8px; }
+
+    .modal-simple { max-width: 360px; }
+    .modal-simple h2 { font-size: 1rem; margin-bottom: 12px; }
+    .modal-simple input {
+      width: 100%; padding: 8px 11px; border: 1px solid var(--border);
+      border-radius: 8px; font-size: .88rem; margin-bottom: 12px; outline: none;
+    }
+    .modal-simple input:focus { border-color: var(--accent); }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+    /* ── Per-pupil tracking table inside modal ── */
+    .track-table { width: 100%; border-collapse: collapse; font-size: .86rem; }
+    .track-table th { padding: 8px 10px; text-align: left; font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); border-bottom: 1px solid var(--border); background: var(--bg); }
+    .track-table td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .track-table tr:last-child td { border-bottom: none; }
+    .track-table tr:hover td { background: #f8f9ff; }
+
+    .check-cell { display: flex; align-items: center; justify-content: center; }
+    .check-box {
+      width: 22px; height: 22px; border-radius: 5px; border: 2px solid var(--border);
+      background: var(--bg); cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-size: .85rem; transition: background .12s, border-color .12s; flex-shrink: 0;
+    }
+    .check-box.checked.ales    { background: #dbeafe; border-color: #60a5fa; }
+    .check-box.checked.platit  { background: #fef3c7; border-color: #fbbf24; }
+    .check-box.checked.primit  { background: #dcfce7; border-color: #4ade80; }
+
+    .track-progress { display: flex; gap: 6px; align-items: center; font-size: .76rem; color: var(--muted); margin-bottom: 12px; }
+    .track-progress .pip { width: 8px; height: 8px; border-radius: 50%; }
+    .pip-ales   { background: #60a5fa; }
+    .pip-platit { background: #fbbf24; }
+    .pip-primit { background: #4ade80; }
+    .track-legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: .78rem; color: var(--muted); margin-bottom: 14px; }
+    .track-legend span { display: flex; align-items: center; gap: 5px; }
+
+    /* rechizit detail link */
+    .detail-link { color: var(--accent); cursor: pointer; text-decoration: underline; font-size: .82rem; white-space: nowrap; }
+
+    /* mini progress bar */
+    .mini-prog { display: flex; gap: 4px; align-items: center; }
+    .prog-bar-wrap { width: 60px; height: 6px; border-radius: 3px; background: #e5e7eb; overflow: hidden; }
+    .prog-bar-fill { height: 100%; border-radius: 3px; background: var(--success); transition: width .2s; }
+
+    @media print {
+      header .cls-badge, .tabs, .toolbar, .add-panel, .row-actions, .qty-ctrl button,
+      .pupil-actions, .modal-overlay { display: none !important; }
+      body { background: #fff; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══ Class name modal ══ -->
+<div class="modal-overlay" id="classModal">
+  <div class="modal modal-simple">
+    <h2>Numele clasei</h2>
+    <input type="text" id="classNameInput" placeholder="ex: Clasa a IV-a B" maxlength="40" />
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="saveClassName()">Salvează</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Add/Edit pupil modal ══ -->
+<div class="modal-overlay" id="pupilModal">
+  <div class="modal modal-simple">
+    <h2 id="pupilModalTitle">Elev nou</h2>
+    <input type="text" id="pupilNameInput" placeholder="Nume și prenume" maxlength="60" />
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closePupilModal()">Anulează</button>
+      <button class="btn btn-primary" id="pupilModalSaveBtn" onclick="savePupil()">Salvează</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Rechizit detail modal (per-pupil tracking) ══ -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal" style="max-width:720px;">
+    <div class="modal-header">
+      <div style="flex:1;">
+        <h2 id="detailTitle">—</h2>
+        <div id="detailSub" style="font-size:.8rem;color:var(--muted);margin-top:3px;"></div>
+      </div>
+      <button class="modal-close" onclick="closeDetailModal()">✕</button>
+    </div>
+    <div class="track-legend">
+      <span><span class="pip pip-ales"></span> Ales – elevul s-a oferit să cumpere</span>
+      <span><span class="pip pip-platit"></span> Plătit – a achitat suma</span>
+      <span><span class="pip pip-primit"></span> Primit – rechizitul a ajuns la elev</span>
+    </div>
+    <div class="modal-body">
+      <table class="track-table">
+        <thead>
+          <tr>
+            <th style="width:34px;">#</th>
+            <th>Elev</th>
+            <th style="text-align:center;">Ales</th>
+            <th style="text-align:center;">Plătit</th>
+            <th style="text-align:center;">Primit</th>
+          </tr>
+        </thead>
+        <tbody id="detailBody"></tbody>
+      </table>
+      <div id="detailEmpty" class="empty-state" style="display:none;">
+        <div class="big">👨‍👩‍👧‍👦</div>
+        <div>Nu există elevi în clasă.<br>Adaugă elevi din tab-ul <strong>Elevi</strong>.</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeDetailModal()">Închide</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Firebase status banner ══ -->
+<div id="fbBanner" style="display:none;background:#fef3c7;color:#92400e;font-size:.82rem;padding:7px 20px;text-align:center;border-bottom:1px solid #fde68a;">
+  ⚠️ <strong>Firebase neconfigurat</strong> — datele se salvează doar local. Urmează instrucțiunile din <strong>README.md</strong> pentru sincronizare.
+</div>
+
+<!-- ══ Header ══ -->
+<header>
+  <span class="icon">🎒</span>
+  <div>
+    <h1>Foldul Clasei</h1>
+    <p>Rechizite & Elevi</p>
+  </div>
+  <div class="spacer"></div>
+  <span id="syncDot" title="Conectat la Firebase" style="display:none;width:9px;height:9px;border-radius:50%;background:#4ade80;flex-shrink:0;"></span>
+  <button class="cls-badge" id="classNameBadge" onclick="openClassModal()">Clasa: —</button>
+</header>
+
+<!-- ══ Tabs ══ -->
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('rechizite', this)">📋 Rechizite</button>
+  <button class="tab-btn" onclick="switchTab('elevi', this)">👩‍🎓 Elevi</button>
+</div>
+
+<div class="wrapper">
+
+  <!-- ════════════════ TAB: RECHIZITE ════════════════ -->
+  <div class="tab-pane active" id="tab-rechizite">
+
+    <div class="summary">
+      <div class="card c-total">  <div class="lbl">Total rechizite</div><div class="val" id="statTotal">0</div></div>
+      <div class="card c-need">   <div class="lbl">De cumpărat</div>   <div class="val" id="statNeed">0</div></div>
+      <div class="card c-partial"><div class="lbl">Parțial</div>       <div class="val" id="statPartial">0</div></div>
+      <div class="card c-ok">     <div class="lbl">Cumpărate</div>     <div class="val" id="statOk">0</div></div>
+    </div>
+
+    <div class="toolbar">
+      <input type="text" id="searchInput" placeholder="Caută rechizite..." oninput="renderItems()" />
+      <select id="filterCat" onchange="renderItems()"><option value="">Toate categoriile</option></select>
+      <select id="filterStatus" onchange="renderItems()">
+        <option value="">Toate statusurile</option>
+        <option value="necesar">De cumpărat</option>
+        <option value="partial">Parțial</option>
+        <option value="cumparat">Cumpărat</option>
+      </select>
+      <button class="btn btn-ghost" onclick="exportCSV()">📥 Export CSV</button>
+      <button class="btn btn-ghost" onclick="window.print()">🖨️ Printează</button>
+      <button class="btn btn-primary" onclick="toggleAddPanel()">＋ Adaugă rechizit</button>
+    </div>
+
+    <div class="add-panel" id="addPanel">
+      <h3 id="addPanelTitle">Rechizit nou</h3>
+      <div class="form-row">
+        <div class="form-group" style="flex:2;">
+          <label>Denumire *</label>
+          <input type="text" id="fName" placeholder="ex: Caiet dictando A5" />
+        </div>
+        <div class="form-group">
+          <label>Categorie</label>
+          <input type="text" id="fCat" placeholder="ex: Caiete" list="catList" />
+          <datalist id="catList"></datalist>
+        </div>
+        <div class="form-group" style="max-width:86px;">
+          <label>Cantitate</label>
+          <input type="number" id="fQty" value="1" min="1" max="999" />
+        </div>
+        <div class="form-group" style="max-width:86px;">
+          <label>Cumpărat</label>
+          <input type="number" id="fBought" value="0" min="0" max="999" />
+        </div>
+        <div class="form-group" style="flex:2;">
+          <label>Observații</label>
+          <input type="text" id="fNote" placeholder="ex: cu liniatură tip II" />
+        </div>
+        <div class="form-group" style="justify-content:flex-end; min-width:auto;">
+          <label>&nbsp;</label>
+          <button class="btn btn-primary" id="addPanelBtn" onclick="addItem()">Adaugă</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th data-sort="name"   onclick="setSortCol('name')">Rechizit</th>
+            <th data-sort="cat"    onclick="setSortCol('cat')">Categorie</th>
+            <th data-sort="qty"    onclick="setSortCol('qty')">Cantitate</th>
+            <th>Cumpărat</th>
+            <th data-sort="status" onclick="setSortCol('status')">Status</th>
+            <th>Elevi</th>
+            <th>Acțiuni</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div><!-- /tab-rechizite -->
+
+  <!-- ════════════════ TAB: ELEVI ════════════════ -->
+  <div class="tab-pane" id="tab-elevi">
+
+    <div class="summary" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));">
+      <div class="card c-pupils"><div class="lbl">Total elevi</div><div class="val" id="statPupils">0</div></div>
+      <div class="card c-ok">   <div class="lbl">Au ales rechizite</div><div class="val" id="statPupilsActive">0</div></div>
+      <div class="card c-need"> <div class="lbl">Nu au ales nimic</div><div class="val" id="statPupilsNone">0</div></div>
+    </div>
+
+    <div class="toolbar">
+      <input type="text" id="pupilSearch" placeholder="Caută elev..." oninput="renderPupils()" />
+      <button class="btn btn-primary" onclick="openPupilModal(null)">＋ Adaugă elev</button>
+    </div>
+
+    <div id="pupilGrid" class="pupil-grid"></div>
+    <div id="pupilEmpty" class="empty-state" style="display:none;">
+      <div class="big">🏫</div>
+      <div>Nu există elevi adăugați.<br>Apasă <strong>＋ Adaugă elev</strong> pentru a începe.</div>
+    </div>
+
+  </div><!-- /tab-elevi -->
+
+</div><!-- /wrapper -->
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════
+let items    = [];
+let pupils   = [];
+let tracking = {};
+let className = '';
+let sortCol = 'name', sortDir = 1;
+let editItemId = null, editPupilId = null;
+let detailItemId = null;
+
+// Lista implicită de elevi (folosită la seed-ul inițial în Firebase)
+const DEFAULT_PUPILS = [
+  "Bartha Horia","Barbu David - Nicholas","Balan Alexandru - Ioan",
+  "Botea Tudor","Butnariu Dragos - Ioan","Carp David - Alexandru",
+  "Chirita Teodor","Cojocariu Iasmin - Elena","Florea Sebastian",
+  "Ghita Rebeca - Ioana","Grigore Patrik - Andrei","Gulin Teodor",
+  "Halauca Sergiu","Irimie Mihai - Alexandru","Lacatus Horia - Andrei",
+  "Marin Luca - Adrian","Monescu Petru","Oprescu Cristian - Paul",
+  "Pancu Matei","Paltanea Razvan - Matei","Pop - Gosman Ayan - Razvan",
+  "Pristavu Tudor - Andrei","Radu Gabriel - Bogdan","Rotaru Mara",
+  "Sofletea - Ciopraga Catalin","Taropa Corina","Tret Stefan","Tudor David"
+];
+
+// ═══════════════════════════════════════════════════════════════════
+// FIREBASE vs. LOCALSTORAGE
+// Dacă Firebase nu e configurat, aplicația cade graceful pe localStorage.
+// ═══════════════════════════════════════════════════════════════════
+const FB_CONFIGURED = (function() {
+  try {
+    const cfg = window.__fb;
+    if (!cfg) return false;
+    // Verifică dacă valorile placeholder mai sunt prezente
+    const testRef = cfg.ref(cfg.db, '/');
+    return !!testRef;
+  } catch(e) { return false; }
+})();
+
+// Verifică dacă userul a pus valorile reale (nu placeholder-ele)
+const FB_READY = FB_CONFIGURED && !document.querySelector('script[type="module"]')
+  ?.textContent?.includes('INLOCUIESTE_API_KEY');
+
+if (!FB_READY) {
+  document.getElementById('fbBanner').style.display = 'block';
+}
+
+// ── Helpers de persistență ──
+function fbRef(path) {
+  return window.__fb.ref(window.__fb.db, path);
+}
+
+// Scrie o valoare completă la o cale
+function fbSet(path, value) {
+  if (!FB_READY) return;
+  window.__fb.set(fbRef(path), value);
+}
+
+// Scrie doar câmpurile date (merge) la o cale
+function fbUpdate(path, value) {
+  if (!FB_READY) return;
+  window.__fb.update(fbRef(path), value);
+}
+
+// Șterge o cale
+function fbRemove(path) {
+  if (!FB_READY) return;
+  window.__fb.remove(fbRef(path));
+}
+
+// ── Fallback localStorage (când Firebase nu e configurat) ──
+function lsRead(key, def) {
+  try { return JSON.parse(localStorage.getItem(key) || 'null') ?? def; } catch(e) { return def; }
+}
+function lsWrite(key, val) {
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {}
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// INIT – ascultă Firebase sau încarcă din localStorage
+// ═══════════════════════════════════════════════════════════════════
+function initApp() {
+  if (FB_READY) {
+    document.getElementById('syncDot').style.display = 'inline-block';
+
+    // Ascultă toate datele live
+    window.__fb.onValue(fbRef('/className'), snap => {
+      className = snap.val() || '';
+      updateClassBadge();
+      if (!className) openClassModal();
+    });
+
+    window.__fb.onValue(fbRef('/pupils'), snap => {
+      const val = snap.val();
+      if (!val) {
+        // Primul acces: seed lista de elevi
+        const list = DEFAULT_PUPILS.map(name => ({ id: genId(), name }));
+        const obj  = {};
+        list.forEach(p => { obj[p.id] = p; });
+        fbSet('/pupils', obj);
+      } else {
+        pupils = Object.values(val);
+        renderPupils();
+        renderItems(); // re-render pentru coloanele cu tracking
+        if (detailItemId) renderDetailModal();
+      }
+    });
+
+    window.__fb.onValue(fbRef('/items'), snap => {
+      const val = snap.val();
+      items = val ? Object.values(val) : [];
+      renderItems();
+    });
+
+    window.__fb.onValue(fbRef('/tracking'), snap => {
+      tracking = snap.val() || {};
+      renderItems();
+      renderPupils();
+      if (detailItemId) renderDetailModal();
+    });
+
+  } else {
+    // ── Mod offline: localStorage ──
+    className = lsRead('rechizite_class', '');
+    items     = lsRead('rechizite_items', []);
+    tracking  = lsRead('rechizite_track', {});
+
+    // Seed elevi dacă nu există
+    let storedPupils = lsRead('rechizite_pupils', null);
+    if (!storedPupils || storedPupils.length === 0) {
+      storedPupils = DEFAULT_PUPILS.map(name => ({ id: genId(), name }));
+      lsWrite('rechizite_pupils', storedPupils);
+    }
+    pupils = storedPupils;
+
+    updateClassBadge();
+    if (!className) openClassModal();
+    renderItems();
+    renderPupils();
+  }
+}
+
+// ── Funcții de salvare (Firebase sau localStorage) ──
+function saveItems() {
+  if (FB_READY) {
+    const obj = {};
+    items.forEach(i => { obj[i.id] = i; });
+    fbSet('/items', obj);
+  } else {
+    lsWrite('rechizite_items', items);
+    renderItems(); renderPupils();
+  }
+}
+function savePupils() {
+  if (FB_READY) {
+    const obj = {};
+    pupils.forEach(p => { obj[p.id] = p; });
+    fbSet('/pupils', obj);
+  } else {
+    lsWrite('rechizite_pupils', pupils);
+    renderPupils();
+  }
+}
+function saveTracking() {
+  if (FB_READY) { fbSet('/tracking', tracking); }
+  else          { lsWrite('rechizite_track', tracking); }
+}
+
+initApp();
+
+// ═══════════════════ TABS ═══════════════════
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ═══════════════════ CLASS NAME ═══════════════════
+function openClassModal() {
+  document.getElementById('classNameInput').value = className;
+  document.getElementById('classModal').classList.add('open');
+  setTimeout(() => document.getElementById('classNameInput').focus(), 80);
+}
+function saveClassName() {
+  const v = document.getElementById('classNameInput').value.trim();
+  if (v) {
+    saveClassName_persist(v); // apelează funcția de persistare (Firebase / LS)
+  }
+  updateClassBadge();
+  document.getElementById('classModal').classList.remove('open');
+}
+// Alias pentru a evita coliziunea de nume cu funcția de persistare
+function saveClassName_persist(v) {
+  className = v;
+  if (FB_READY) { fbSet('/className', v); }
+  else          { lsWrite('rechizite_class', v); }
+}
+function updateClassBadge() {
+  document.getElementById('classNameBadge').textContent = className ? 'Clasa: ' + className : 'Setează clasa';
+}
+document.getElementById('classNameInput').addEventListener('keydown', e => { if (e.key === 'Enter') saveClassName(); });
+document.getElementById('classModal').addEventListener('click', function(e) { if (e.target === this && className) this.classList.remove('open'); });
+
+// ═══════════════════ PUPILS ═══════════════════
+function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+function openPupilModal(id) {
+  editPupilId = id;
+  const p = id ? pupils.find(p => p.id === id) : null;
+  document.getElementById('pupilModalTitle').textContent = p ? 'Editează elev' : 'Elev nou';
+  document.getElementById('pupilNameInput').value = p ? p.name : '';
+  document.getElementById('pupilModal').classList.add('open');
+  setTimeout(() => document.getElementById('pupilNameInput').focus(), 80);
+}
+function closePupilModal() {
+  document.getElementById('pupilModal').classList.remove('open');
+  editPupilId = null;
+}
+function savePupil() {
+  const name = document.getElementById('pupilNameInput').value.trim();
+  if (!name) { document.getElementById('pupilNameInput').focus(); return; }
+  if (editPupilId) {
+    const p = pupils.find(p => p.id === editPupilId);
+    if (p) p.name = name;
+  } else {
+    pupils.push({ id: genId(), name });
+  }
+  savePupils();
+  closePupilModal();
+}
+function deletePupil(id) {
+  const p = pupils.find(p => p.id === id);
+  if (!p) return;
+  if (!confirm('Ștergi elevul "' + p.name + '"? Datele de tracking vor fi pierdute.')) return;
+  pupils = pupils.filter(p => p.id !== id);
+  // remove from tracking
+  Object.keys(tracking).forEach(iid => { delete tracking[iid][id]; });
+  savePupils();
+  saveTracking();
+}
+document.getElementById('pupilNameInput').addEventListener('keydown', e => { if (e.key === 'Enter') savePupil(); });
+document.getElementById('pupilModal').addEventListener('click', function(e) { if (e.target === this) closePupilModal(); });
+
+function initials(name) {
+  return name.split(' ').filter(Boolean).slice(0,2).map(w => w[0]).join('').toUpperCase();
+}
+
+function pupilAlesCount(pid) {
+  return Object.values(tracking).filter(t => t[pid] && t[pid].ales).length;
+}
+
+function renderPupils() {
+  const search = document.getElementById('pupilSearch').value.trim().toLowerCase();
+  const list = pupils.filter(p => !search || p.name.toLowerCase().includes(search))
+                     .slice().sort((a,b) => a.name.localeCompare(b.name, 'ro'));
+
+  document.getElementById('statPupils').textContent = pupils.length;
+  const active = pupils.filter(p => pupilAlesCount(p.id) > 0).length;
+  document.getElementById('statPupilsActive').textContent = active;
+  document.getElementById('statPupilsNone').textContent = pupils.length - active;
+
+  const grid  = document.getElementById('pupilGrid');
+  const empty = document.getElementById('pupilEmpty');
+
+  if (list.length === 0) { grid.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+
+  grid.innerHTML = list.map(p => {
+    const ales = pupilAlesCount(p.id);
+    const platit = Object.values(tracking).filter(t => t[p.id] && t[p.id].platit).length;
+    const primit = Object.values(tracking).filter(t => t[p.id] && t[p.id].primit).length;
+    return `
+    <div class="pupil-card">
+      <div class="pupil-avatar">${esc(initials(p.name))}</div>
+      <div>
+        <div class="pupil-name">${esc(p.name)}</div>
+        <div class="pupil-sub">
+          ${ales > 0 ? `<span style="color:#3b82f6;">⬤</span> ${ales} ales` : '<span style="color:#d1d5db;">⬤</span> nimic ales'}
+          ${platit > 0 ? ` · <span style="color:#f59e0b;">⬤</span> ${platit} plătit` : ''}
+          ${primit > 0 ? ` · <span style="color:#22c55e;">⬤</span> ${primit} primit` : ''}
+        </div>
+      </div>
+      <div class="pupil-actions">
+        <button class="icon-btn" title="Editează" onclick="openPupilModal('${p.id}')">✏️</button>
+        <button class="icon-btn del" title="Șterge" onclick="deletePupil('${p.id}')">🗑️</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function savePupils() { localStorage.setItem('rechizite_pupils', JSON.stringify(pupils)); renderPupils(); }
+
+// ═══════════════════ TRACKING ═══════════════════
+function getTrack(itemId, pupilId) {
+  if (!tracking[itemId]) tracking[itemId] = {};
+  if (!tracking[itemId][pupilId]) tracking[itemId][pupilId] = { ales: false, platit: false, primit: false };
+  return tracking[itemId][pupilId];
+}
+
+function toggleTrack(itemId, pupilId, field) {
+  const t = getTrack(itemId, pupilId);
+  if (field === 'ales' && t.ales) {
+    // uncheck ales → also uncheck platit & primit
+    t.ales = false; t.platit = false; t.primit = false;
+  } else if (field === 'platit' && !t.ales) {
+    // must have ales first
+    t.ales = true; t.platit = true;
+  } else if (field === 'primit' && !t.ales) {
+    t.ales = true; t.primit = true;
+  } else {
+    t[field] = !t[field];
+  }
+  saveTracking();
+  renderDetailModal();
+  renderItems(); // update mini progress in table
+  renderPupils();
+}
+
+function saveTracking() { localStorage.setItem('rechizite_track', JSON.stringify(tracking)); }
+
+// How many pupils have "ales" for an item
+function countAles(itemId) { return pupils.filter(p => getTrack(itemId, p.id).ales).length; }
+
+// ═══════════════════ DETAIL MODAL ═══════════════════
+function openDetailModal(itemId) {
+  detailItemId = itemId;
+  const it = items.find(i => i.id === itemId);
+  if (!it) return;
+  document.getElementById('detailTitle').textContent = it.name;
+  document.getElementById('detailSub').textContent = it.cat + (it.note ? ' · ' + it.note : '');
+  document.getElementById('detailModal').classList.add('open');
+  renderDetailModal();
+}
+function closeDetailModal() {
+  document.getElementById('detailModal').classList.remove('open');
+  detailItemId = null;
+}
+document.getElementById('detailModal').addEventListener('click', function(e) { if (e.target === this) closeDetailModal(); });
+
+function renderDetailModal() {
+  if (!detailItemId) return;
+  const sorted = [...pupils].sort((a,b) => a.name.localeCompare(b.name,'ro'));
+  const tbody = document.getElementById('detailBody');
+  const empty = document.getElementById('detailEmpty');
+
+  if (sorted.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  tbody.innerHTML = sorted.map((p, idx) => {
+    const t = getTrack(detailItemId, p.id);
+    return `
+    <tr>
+      <td style="color:var(--muted);font-size:.78rem;">${idx+1}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="pupil-avatar" style="width:30px;height:30px;font-size:.76rem;">${esc(initials(p.name))}</div>
+          <span style="font-weight:600;">${esc(p.name)}</span>
+        </div>
+      </td>
+      <td style="text-align:center;">
+        <div class="check-cell">
+          <div class="check-box ${t.ales?'checked ales':''}" onclick="toggleTrack('${detailItemId}','${p.id}','ales')" title="Ales">
+            ${t.ales ? '✔' : ''}
+          </div>
+        </div>
+      </td>
+      <td style="text-align:center;">
+        <div class="check-cell">
+          <div class="check-box ${t.platit?'checked platit':''}" onclick="toggleTrack('${detailItemId}','${p.id}','platit')" title="Plătit">
+            ${t.platit ? '✔' : ''}
+          </div>
+        </div>
+      </td>
+      <td style="text-align:center;">
+        <div class="check-cell">
+          <div class="check-box ${t.primit?'checked primit':''}" onclick="toggleTrack('${detailItemId}','${p.id}','primit')" title="Primit">
+            ${t.primit ? '✔' : ''}
+          </div>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ═══════════════════ ITEMS ═══════════════════
+function toggleAddPanel() {
+  const p = document.getElementById('addPanel');
+  p.classList.toggle('open');
+  if (p.classList.contains('open') && !editItemId) document.getElementById('fName').focus();
+}
+
+function addItem() {
+  const name = document.getElementById('fName').value.trim();
+  if (!name) { document.getElementById('fName').focus(); return; }
+  const qty    = Math.max(1, parseInt(document.getElementById('fQty').value) || 1);
+  const bought = Math.min(qty, Math.max(0, parseInt(document.getElementById('fBought').value) || 0));
+  const cat    = document.getElementById('fCat').value.trim() || 'General';
+  const note   = document.getElementById('fNote').value.trim();
+  items.push({ id: genId(), name, cat, qty, bought, note });
+  saveItems();
+  resetAddForm();
+  document.getElementById('fName').focus();
+}
+
+function resetAddForm() {
+  ['fName','fCat','fNote'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('fQty').value = 1;
+  document.getElementById('fBought').value = 0;
+  editItemId = null;
+  document.getElementById('addPanelTitle').textContent = 'Rechizit nou';
+  document.getElementById('addPanelBtn').textContent = 'Adaugă';
+  document.getElementById('addPanelBtn').onclick = addItem;
+}
+
+function deleteItem(id) {
+  if (!confirm('Ștergi acest rechizit?')) return;
+  items = items.filter(i => i.id !== id);
+  delete tracking[id];
+  saveItems(); saveTracking();
+}
+
+function setBought(id, val) {
+  const it = items.find(i => i.id === id);
+  if (!it) return;
+  it.bought = Math.max(0, Math.min(it.qty, val));
+  saveItems();
+}
+
+function setQty(id, val) {
+  const it = items.find(i => i.id === id);
+  if (!it) return;
+  it.qty = Math.max(1, val);
+  if (it.bought > it.qty) it.bought = it.qty;
+  saveItems();
+}
+
+function startEditItem(id) {
+  const it = items.find(i => i.id === id);
+  if (!it) return;
+  document.getElementById('fName').value   = it.name;
+  document.getElementById('fCat').value    = it.cat;
+  document.getElementById('fQty').value    = it.qty;
+  document.getElementById('fBought').value = it.bought;
+  document.getElementById('fNote').value   = it.note || '';
+  editItemId = id;
+  document.getElementById('addPanelTitle').textContent = 'Editează rechizit';
+  document.getElementById('addPanelBtn').textContent = 'Salvează';
+  document.getElementById('addPanelBtn').onclick = saveEditItem;
+  const panel = document.getElementById('addPanel');
+  panel.classList.add('open');
+  document.getElementById('fName').focus();
+}
+
+function saveEditItem() {
+  const it = items.find(i => i.id === editItemId);
+  if (!it) return;
+  const name = document.getElementById('fName').value.trim();
+  if (!name) return;
+  it.name   = name;
+  it.cat    = document.getElementById('fCat').value.trim() || 'General';
+  it.qty    = Math.max(1, parseInt(document.getElementById('fQty').value) || 1);
+  it.bought = Math.min(it.qty, Math.max(0, parseInt(document.getElementById('fBought').value) || 0));
+  it.note   = document.getElementById('fNote').value.trim();
+  resetAddForm();
+  saveItems();
+}
+
+function setSortCol(col) {
+  if (sortCol === col) sortDir *= -1;
+  else { sortCol = col; sortDir = 1; }
+  renderItems();
+}
+
+function statusOf(it) {
+  if (it.bought === 0) return 'necesar';
+  if (it.bought >= it.qty) return 'cumparat';
+  return 'partial';
+}
+
+function renderItems() {
+  updateCatFilter();
+  updateStats();
+
+  const search = document.getElementById('searchInput').value.trim().toLowerCase();
+  const fCat   = document.getElementById('filterCat').value;
+  const fSt    = document.getElementById('filterStatus').value;
+
+  let list = items.filter(it => {
+    if (search && !it.name.toLowerCase().includes(search) && !it.cat.toLowerCase().includes(search)) return false;
+    if (fCat && it.cat !== fCat) return false;
+    if (fSt  && statusOf(it) !== fSt) return false;
+    return true;
+  });
+
+  list.sort((a, b) => {
+    let va, vb;
+    if      (sortCol === 'name')   { va = a.name.toLowerCase(); vb = b.name.toLowerCase(); }
+    else if (sortCol === 'cat')    { va = a.cat.toLowerCase();  vb = b.cat.toLowerCase(); }
+    else if (sortCol === 'qty')    { va = a.qty; vb = b.qty; }
+    else if (sortCol === 'status') { const o = {necesar:0,partial:1,cumparat:2}; va = o[statusOf(a)]; vb = o[statusOf(b)]; }
+    if (va < vb) return -sortDir;
+    if (va > vb) return  sortDir;
+    return 0;
+  });
+
+  document.querySelectorAll('thead th[data-sort]').forEach(th => {
+    th.classList.remove('sort-asc','sort-desc');
+    if (th.dataset.sort === sortCol) th.classList.add(sortDir === 1 ? 'sort-asc' : 'sort-desc');
+  });
+
+  const tbody = document.getElementById('tableBody');
+  if (list.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="big">📋</div><div>Nicio rechizită găsită.</div></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = list.map(it => {
+    const st = statusOf(it);
+    const stLabel = { necesar:'De cumpărat', partial:'Parțial', cumparat:'Cumpărat' }[st];
+    const stIcon  = { necesar:'🔴', partial:'🟡', cumparat:'🟢' }[st];
+    const ales  = pupils.filter(p => getTrack(it.id,p.id).ales).length;
+    const platit= pupils.filter(p => getTrack(it.id,p.id).platit).length;
+    const primit= pupils.filter(p => getTrack(it.id,p.id).primit).length;
+    const total = pupils.length;
+    const pct   = total > 0 ? Math.round(primit/total*100) : 0;
+    return `
+    <tr>
+      <td>
+        <span class="item-name">${esc(it.name)}</span>
+        ${it.note ? `<span class="item-note">${esc(it.note)}</span>` : ''}
+      </td>
+      <td><span class="cat-tag">${esc(it.cat)}</span></td>
+      <td>
+        <div class="qty-ctrl">
+          <button onclick="setQty('${it.id}',${it.qty-1})">−</button>
+          <span class="qty-num">${it.qty}</span>
+          <button onclick="setQty('${it.id}',${it.qty+1})">＋</button>
+        </div>
+      </td>
+      <td>
+        <div class="qty-ctrl">
+          <button onclick="setBought('${it.id}',${it.bought-1})">−</button>
+          <span class="qty-num">${it.bought}</span>
+          <button onclick="setBought('${it.id}',${it.bought+1})">＋</button>
+        </div>
+      </td>
+      <td><span class="status-badge s-${st}">${stIcon} ${stLabel}</span></td>
+      <td>
+        ${total > 0
+          ? `<div class="mini-prog" title="Ales:${ales} · Plătit:${platit} · Primit:${primit}">
+               <span style="font-size:.76rem;color:var(--muted);">${ales}/${total}</span>
+               <div class="prog-bar-wrap"><div class="prog-bar-fill" style="width:${pct}%;"></div></div>
+             </div>
+             <a class="detail-link" onclick="openDetailModal('${it.id}')">detalii</a>`
+          : `<span style="font-size:.76rem;color:var(--muted);">—</span>`
+        }
+      </td>
+      <td>
+        <div class="row-actions">
+          <button class="icon-btn" title="Editează" onclick="startEditItem('${it.id}')">✏️</button>
+          <button class="icon-btn del" title="Șterge" onclick="deleteItem('${it.id}')">🗑️</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function updateStats() {
+  document.getElementById('statTotal').textContent   = items.length;
+  document.getElementById('statNeed').textContent    = items.filter(i => statusOf(i) === 'necesar').length;
+  document.getElementById('statPartial').textContent = items.filter(i => statusOf(i) === 'partial').length;
+  document.getElementById('statOk').textContent      = items.filter(i => statusOf(i) === 'cumparat').length;
+}
+
+function updateCatFilter() {
+  const sel = document.getElementById('filterCat');
+  const cur = sel.value;
+  const cats = [...new Set(items.map(i => i.cat))].sort();
+  sel.innerHTML = '<option value="">Toate categoriile</option>' +
+    cats.map(c => `<option value="${esc(c)}" ${c===cur?'selected':''}>${esc(c)}</option>`).join('');
+  document.getElementById('catList').innerHTML = cats.map(c => `<option value="${esc(c)}">`).join('');
+}
+
+function saveItems() { localStorage.setItem('rechizite_items', JSON.stringify(items)); renderItems(); renderPupils(); }
+
+// ═══════════════════ EXPORT CSV ═══════════════════
+function exportCSV() {
+  const header = ['Rechizit','Categorie','Cantitate','Cumpărat','Status','Ales de (elevi)','Observații'];
+  const rows = items.map(it => {
+    const alesElevi = pupils.filter(p => getTrack(it.id,p.id).ales).map(p=>p.name).join('; ');
+    return [it.name, it.cat, it.qty, it.bought,
+      {necesar:'De cumpărat',partial:'Parțial',cumparat:'Cumpărat'}[statusOf(it)],
+      alesElevi, it.note||''];
+  });
+  const csv = [header,...rows].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,\uFEFF' + encodeURIComponent(csv);
+  a.download = `rechizite-${(className||'clasa').replace(/\s+/g,'-')}.csv`;
+  a.click();
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Enter key in add form
+['fName','fCat','fQty','fBought','fNote'].forEach(id => {
+  document.getElementById(id).addEventListener('keydown', e => {
+    if (e.key === 'Enter') { editItemId ? saveEditItem() : addItem(); }
+  });
+});
+</script>
+</body>
+</html>
