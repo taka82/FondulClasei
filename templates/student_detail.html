@@ -22,6 +22,11 @@
     </tr>
     {% endfor %}
   </table></div>
+  {% if supplies_owed or supplies_unpriced %}
+  <p class="owed-line"><strong>Restanță la rechizite:</strong> <span class="owed">{{ supplies_owed|money }}</span>
+    {% if supplies_unpriced %}<span class="muted small">(+ {{ supplies_unpriced }} fără preț stabilit)</span>{% endif %}
+    <span class="muted small">— rechizite alese și încă neplătite</span></p>
+  {% endif %}
   {% else %}
     <p class="muted">Niciun rechizit ales încă.</p>
   {% endif %}

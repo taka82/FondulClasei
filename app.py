@@ -310,6 +310,11 @@ def dashboard():
     return render_template(
         "dashboard.html", opening=opening, collected=collected, spent=spent, supply_stats=supply_stats(),
         balance=opening + collected - spent, outstanding=outstanding,
+        supplies_outstanding=db.scalar(
+            "SELECT COALESCE(SUM(sp.price), 0) FROM supply_tracking t "
+            "JOIN supplies sp ON sp.id = t.supply_id "
+            "JOIN students st ON st.id = t.student_id AND st.active = 1 "
+            "WHERE t.chosen = 1 AND t.paid = 0"),
         by_category=by_category, recent_expenses=recent_expenses,
         recent_payments=recent_payments, my_student=my_student,
     )
@@ -335,7 +340,14 @@ def students():
         "SELECT s.*, "
         " COALESCE((SELECT SUM(amount) FROM payments WHERE student_id = s.id), 0) AS paid, "
         " CASE WHEN s.active THEN COALESCE((SELECT SUM(MAX(amount - paid, 0)) "
-        "   FROM balances WHERE student_id = s.id), 0) ELSE 0 END AS owed "
+        "   FROM balances WHERE student_id = s.id), 0) ELSE 0 END AS owed, "
+        # rechizite: alese (Ales) si neplatite; cele fara pret nu se pot socoti, dar se numara separat
+        " CASE WHEN s.active THEN COALESCE((SELECT SUM(sp.price) FROM supply_tracking t "
+        "   JOIN supplies sp ON sp.id = t.supply_id "
+        "   WHERE t.student_id = s.id AND t.chosen = 1 AND t.paid = 0), 0) ELSE 0 END AS supplies_owed, "
+        " CASE WHEN s.active THEN (SELECT COUNT(*) FROM supply_tracking t "
+        "   JOIN supplies sp ON sp.id = t.supply_id "
+        "   WHERE t.student_id = s.id AND t.chosen = 1 AND t.paid = 0 AND sp.price IS NULL) ELSE 0 END AS supplies_unpriced "
         "FROM students s ORDER BY s.active DESC, s.name COLLATE NOCASE"
     )
     return render_template("students.html", students=rows)
@@ -370,8 +382,11 @@ def student_detail(student_id):
         "WHERE t.student_id = ? AND (t.chosen OR t.paid OR t.received) ORDER BY sp.name COLLATE NOCASE",
         (student_id,)
     )
+    unpaid = [t for t in supplies_of_student if t["chosen"] and not t["paid"]]
     return render_template("student_detail.html", student=student, rows=rows, payments=payments,
-                           student_supplies=supplies_of_student, today=date.today().isoformat())
+                           student_supplies=supplies_of_student, today=date.today().isoformat(),
+                           supplies_owed=sum(t["price"] for t in unpaid if t["price"]),
+                           supplies_unpriced=sum(1 for t in unpaid if t["price"] is None))
 
 
 @app.route("/me")
@@ -751,16 +766,24 @@ def export_payments():
 @app.route("/export/restante.csv")
 @staff_required
 def export_outstanding():
-    rows = db.query(
-        "SELECT s.name AS student, c.name AS contribution, b.amount, b.paid FROM balances b "
+    contributions_owed = db.query(
+        "SELECT s.name AS student, c.name AS item, b.amount, b.paid FROM balances b "
         "JOIN students s ON s.id = b.student_id JOIN contributions c ON c.id = b.contribution_id "
         "WHERE s.active = 1 AND b.paid < b.amount ORDER BY s.name COLLATE NOCASE, c.due_date"
     )
-    return csv_response("restante.csv", ["Elev", "Contribuție", "De plătit (lei)", "Plătit (lei)", "Rest (lei)"],
-                        [(csv_safe(r["student"]), csv_safe(r["contribution"]),
-                          f"{r['amount'] / 100:.2f}".replace(".", ","),
-                          f"{r['paid'] / 100:.2f}".replace(".", ","),
-                          f"{(r['amount'] - r['paid']) / 100:.2f}".replace(".", ",")) for r in rows])
+    supplies_owed = db.query(
+        "SELECT st.name AS student, 'Rechizit: ' || sp.name || CASE WHEN sp.price IS NULL THEN ' (fără preț)' ELSE '' END AS item, "
+        "       sp.price AS amount, 0 AS paid "
+        "FROM supply_tracking t JOIN students st ON st.id = t.student_id AND st.active = 1 "
+        "JOIN supplies sp ON sp.id = t.supply_id WHERE t.chosen = 1 AND t.paid = 0"
+    )
+    # sortare stabila dupa elev: contributiile inaintea rechizitelor
+    rows = sorted([*contributions_owed, *supplies_owed], key=lambda r: r["student"].lower())
+    return csv_response("restante.csv",
+                        ["Elev", "Contribuție / rechizit", "De plătit (lei)", "Plătit (lei)", "Rest (lei)"],
+                        [(csv_safe(r["student"]), csv_safe(r["item"]),
+                          lei(r["amount"]), lei(r["paid"]),
+                          lei(r["amount"] - r["paid"]) if r["amount"] is not None else "") for r in rows])
 
 
 # ---------------------------------------------------------------- rechizite

@@ -314,6 +314,52 @@ def main():
     # pretul e informativ: nu schimba soldul fondului
     assert sql("SELECT COALESCE(SUM(amount), 0) FROM payments WHERE contribution_id IN (SELECT id FROM contributions)")[0][0] >= 0
 
+    # --- restante: contributii + rechizite (alese si neplatite, la pretul lor) pe pagina Elevi
+    def strip(cell):
+        return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", cell)).strip()
+
+    def student_cells(html, name):
+        row = re.search(r"<tr[^>]*>(?:(?!</tr>).)*?>%s</a>(?:(?!</tr>).)*?</tr>" % re.escape(name), html, re.S).group(0)
+        return [strip(c) for c in re.findall(r'<td class="num[^"]*">(.*?)</td>', row, re.S)]
+
+    sup_id = lambda name: sql("SELECT id FROM supplies WHERE name = ?", name)[0][0]
+    # elevul 3: Caiet mate (3,00) ales si neplatit; "Fara pret" ales si neplatit, dar fara pret
+    for name in ("Caiet mate", "Fara pret"):
+        assert ajax(admin, f"/supplies/{sup_id(name)}/track", {"student_id": "3", "chosen": "1"}, page="/supplies").status_code == 200
+    page_students = admin.get("/students").get_data(as_text=True)
+    # [platit, restanta contributii, restanta rechizite, total]
+    assert student_cells(page_students, "Popescu Ana") == ["50,00 lei", "120,50 lei", "12,50 lei", "133,00 lei"]
+    assert student_cells(page_students, "Ionescu Mihai") == ["20,00 lei", "150,50 lei", "12,50 lei", "163,00 lei"]
+    assert student_cells(page_students, "Vasile Dan") == ["0,00 lei", "170,50 lei", "3,00 lei +1 fără preț", "173,50 lei"]
+    tfoot = strip(re.search(r"<tfoot>(.*?)</tfoot>", page_students, re.S).group(1))
+    assert tfoot == "Total 70,00 lei 441,50 lei 28,00 lei 469,50 lei", tfoot
+    assert "Restanță" in page_students and "Rechizite" in page_students
+    # bifa Plătit la rechizit scoate suma din restanta; rechizitul fara pret ramane doar semnalat
+    ajax(admin, f"/supplies/{sup_id('Caiet mate')}/track", {"student_id": "3", "chosen": "1", "paid": "1"}, page="/supplies")
+    assert student_cells(admin.get("/students").get_data(as_text=True), "Vasile Dan") == ["0,00 lei", "170,50 lei", "0,00 lei +1 fără preț", "170,50 lei"]
+    ajax(admin, f"/supplies/{sup_id('Caiet mate')}/track", {"student_id": "3", "chosen": "1"}, page="/supplies")   # inapoi la neplatit
+    # elev dezactivat: fara restante
+    post(admin, "/students/3/toggle", {}, page="/students")
+    assert student_cells(admin.get("/students").get_data(as_text=True), "Vasile Dan")[1:] == ["0,00 lei", "0,00 lei", "0,00 lei"]
+    post(admin, "/students/3/toggle", {}, page="/students")
+    # panou: Restante = contributii + rechizite, cu mentiune separata
+    dash = admin.get("/").get_data(as_text=True)
+    assert "469,50 lei" in dash and "din care rechizite: 28,00 lei" in dash
+    assert "469,50 lei" in parent.get("/").get_data(as_text=True), "parintele vede acelasi total (agregat)"
+    # pagina elevului: restanta la rechizite (si pentru parinte, doar a copilului lui)
+    assert "Restanță la rechizite:" in parent.get("/students/1").get_data(as_text=True)
+    assert "12,50 lei" in strip(re.search(r'<p class="owed-line">(.*?)</p>', parent.get("/students/1").get_data(as_text=True), re.S).group(1))
+    assert "+ 1 fără preț stabilit" in admin.get("/students/3").get_data(as_text=True)
+    assert parent.get("/students/3").status_code == 403
+    # export restante: contributii si rechizite
+    restante = admin.get("/export/restante.csv").get_data(as_text=True).replace("\r", "")
+    assert restante.startswith("\ufeffElev;Contribuție / rechizit;De plătit (lei);Plătit (lei);Rest (lei)")
+    assert "Popescu Ana;Excursie;120,50;0,00;120,50" in restante
+    assert "Popescu Ana;Rechizit: Caiet dictando;12,50;0,00;12,50" in restante
+    assert "Vasile Dan;Rechizit: Caiet mate;3,00;0,00;3,00" in restante
+    assert "Vasile Dan;Rechizit: Fara pret (fără preț);;0,00;" in restante
+    assert "Engleza" not in restante, "rechizitul platit nu e restanta"
+
     # export (admin): cantitatea de comandat si numele elevilor pe coloane
     csv_text = admin.get("/export/supplies.csv").get_data(as_text=True).replace("\r", "")
     assert csv_text.startswith("\ufeffRechizit;Categorie;Preț (lei);De comandat (buc.);Total de comandat (lei);Ales de")

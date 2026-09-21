@@ -7,13 +7,20 @@
   <section class="card">
     {% if students %}
     <div class="scroll"><table>
-      <thead><tr><th>Nume</th><th class="num">Plătit</th><th class="num">Restanță</th><th></th></tr></thead>
+      <thead>
+        <tr><th rowspan="2">Nume</th><th class="num" rowspan="2">Plătit<br><span class="muted small">contribuții</span></th>
+            <th class="grp" colspan="3">Restanță</th><th rowspan="2"></th></tr>
+        <tr><th class="num">Contribuții</th><th class="num">Rechizite</th><th class="num">Total</th></tr>
+      </thead>
       {% for s in students %}
       <tr class="{{ 'dim' if not s['active'] }}">
         <td><a href="{{ url_for('student_detail', student_id=s['id']) }}">{{ s['name'] }}</a>
             {% if not s['active'] %}<span class="badge">inactiv</span>{% endif %}</td>
         <td class="num">{{ s['paid']|money }}</td>
         <td class="num {{ 'owed' if s['owed'] > 0 }}">{{ s['owed']|money }}</td>
+        <td class="num {{ 'owed' if s['supplies_owed'] > 0 }}">{{ s['supplies_owed']|money }}
+          {% if s['supplies_unpriced'] %}<br><span class="muted small" title="Rechizite alese și neplătite, fără preț stabilit: nu sunt incluse în sumă">+{{ s['supplies_unpriced'] }} fără preț</span>{% endif %}</td>
+        <td class="num {{ 'owed' if s['owed'] + s['supplies_owed'] > 0 }}"><strong>{{ (s['owed'] + s['supplies_owed'])|money }}</strong></td>
         <td class="actions">
           <form method="post" action="{{ url_for('student_toggle', student_id=s['id']) }}" class="inline">
             <input type="hidden" name="csrf" value="{{ csrf_token() }}">
@@ -22,7 +29,12 @@
         </td>
       </tr>
       {% endfor %}
+      <tfoot><tr><th>Total</th><th class="num">{{ students|sum(attribute='paid')|money }}</th>
+        <th class="num">{{ students|sum(attribute='owed')|money }}</th>
+        <th class="num">{{ students|sum(attribute='supplies_owed')|money }}</th>
+        <th class="num">{{ (students|sum(attribute='owed') + students|sum(attribute='supplies_owed'))|money }}</th><th></th></tr></tfoot>
     </table></div>
+    <p class="muted small">Restanța la rechizite = rechizitele <strong>alese</strong> (bifa „Ales”) și încă <strong>neplătite</strong>, la prețul lor. Elevii dezactivați nu au restanțe.</p>
     <p><a href="{{ url_for('export_outstanding') }}">Descarcă restanțele (CSV)</a> ·
        <a href="{{ url_for('export_payments') }}">Descarcă plățile (CSV)</a></p>
     {% else %}

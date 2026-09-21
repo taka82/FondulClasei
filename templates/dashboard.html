@@ -10,7 +10,8 @@
   </div>
   <div class="stat"><span class="label">Total încasat</span><span class="value">{{ collected|money }}</span></div>
   <div class="stat"><span class="label">Total cheltuit</span><span class="value">{{ spent|money }}</span></div>
-  <div class="stat"><span class="label">Restanțe</span><span class="value">{{ outstanding|money }}</span></div>
+  <div class="stat"><span class="label">Restanțe</span><span class="value">{{ (outstanding + supplies_outstanding)|money }}</span>
+    {% if supplies_outstanding %}<span class="sub">din care rechizite: {{ supplies_outstanding|money }}</span>{% endif %}</div>
 </section>
 {% if opening %}
   <p class="muted small">Soldul include {{ opening|money }} raportați din anul anterior.</p>

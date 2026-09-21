@@ -57,6 +57,8 @@ Pagina **Rechizite** ține lista de rechizite ale clasei (denumire, categorie, p
 
 **Prețul** (în lei, per bucată) e opțional și se completează de casier la „Adaugă rechizit” sau „Modifică”. Îl văd toți: în listă, în pagina rechizitului și, la părinte, în „Situația mea”. Casierul vede în pagina rechizitului și **totalul de comandat** (preț × voturi), care se actualizează la fiecare bifă; exportul CSV are coloanele „Preț” și „Total de comandat”. Prețul este **informativ**: nu intră în soldul fondului și nu creează plăți.
 
+**Restanțe la rechizite:** pagina **Elevi** arată pentru fiecare elev *Plătit* (contribuții), *Restanță* împărțită în *Contribuții*, *Rechizite* și *Total*, plus un rând de totaluri. Restanța la rechizite = rechizitele **alese** (bifa „Ales”) și încă **neplătite** (bifa „Plătit” lipsește), la prețul lor; cele fără preț nu se pot socoti și apar marcate „+N fără preț”. Același total apare pe pagina elevului („Situația mea” la părinte), în cardul **Restanțe** de pe Panou (cu mențiunea „din care rechizite”) și în exportul `restante.csv`, care listează acum și rechizitele.
+
 **Cine poate bifa ce:**
 
 | | Ales | Plătit | Primit |
