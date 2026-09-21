@@ -1,6 +1,6 @@
 # Punerea aplicației online (părinții intră de oriunde)
 
-Ghid pentru **PythonAnywhere** (plan gratuit): rulează Flask și păstrează fișierul bazei de date, primești HTTPS și o adresă de forma `https://UTILIZATOR.pythonanywhere.com`. Durează aproximativ 20 de minute și se face o singură dată.
+Ghid pentru **PythonAnywhere** (plan gratuit): rulează Flask și păstrează fișierul bazei de date, primești HTTPS și o adresă de forma `https://UTILIZATOR.eu.pythonanywhere.com`. Durează aproximativ 20 de minute și se face o singură dată.
 
 Ai nevoie de: un cont PythonAnywhere (îl creezi tu) și codul publicat pe GitHub.
 
@@ -16,7 +16,11 @@ Verifică pe https://github.com/taka82/FondulClasei că apare ultimul commit.
 
 ## 2. Cont PythonAnywhere
 
-Creează pe pythonanywhere.com un cont **Beginner** (gratuit). Numele de utilizator devine parte din adresa site-ului, deci alege unul neutru (fără numele copiilor sau al clasei).
+Creează un cont **Beginner** (gratuit) pe **https://eu.pythonanywhere.com**, site-ul european: serverele sunt în Frankfurt (UE), deci datele copiilor rămân în Uniunea Europeană. Pe site-ul global (`pythonanywhere.com`) datele ar fi în SUA.
+
+**Numele de utilizator nu se mai poate schimba** după creare și devine adresa site-ului (`https://UTILIZATOR.eu.pythonanywhere.com`), pe care o primesc toți părinții. Alege-l cu grijă: scurt, ușor de dictat, neutru (fără numele copiilor). De exemplu `fondclasa5`.
+
+Dacă ai greșit, nu se poate redenumi: creezi un cont nou (poți refolosi același email) și repeți pașii; codul e pe GitHub, iar baza de date se copiază din `instance/fond.db`. Un domeniu propriu (ex. `fondclasa.ro`) cere un plan plătit (vezi pasul 8).
 
 ## 3. Cod și cont de casier (consola Bash)
 
@@ -44,7 +48,7 @@ Dacă apare `ModuleNotFoundError: flask`, rulează `python3.12 -m pip install --
    Salvează (**Save**).
 3. La **Static files** adaugă: URL `/static/` → Directory `/home/UTILIZATOR/fond/static`.
 4. La **Security** pornește **Force HTTPS**.
-5. Apasă butonul verde **Reload**, apoi deschide `https://UTILIZATOR.pythonanywhere.com`. Ar trebui să vezi pagina de autentificare. Intră cu contul de casier.
+5. Apasă butonul verde **Reload**, apoi deschide `https://UTILIZATOR.eu.pythonanywhere.com`. Ar trebui să vezi pagina de autentificare. Intră cu contul de casier.
 
 Dacă vezi o eroare, deschide **Error log** (link în tab-ul Web); ultimele linii spun ce lipsește.
 
@@ -76,7 +80,7 @@ Apoi **Reload** în tab-ul Web. Migrările bazei de date se aplică singure, cu 
 
 ## 8. Reînnoirea (plan gratuit)
 
-La fiecare **3 luni**, în tab-ul Web apasă butonul **Run until 3 months from today**; primești email de reamintire cu o săptămână înainte. Dacă uiți, site-ul se oprește (datele rămân) și se repornește la fel. Un plan plătit (aprox. 5 $/lună) elimină restricția.
+La fiecare **3 luni**, în tab-ul Web apasă butonul **Run until 3 months from today**; primești email de reamintire cu o săptămână înainte. Dacă uiți, site-ul se oprește (datele rămân) și se repornește la fel. Un plan plătit (**Developer, 10 $/lună**, pe site-ul european se facturează în euro) elimină restricția și permite un domeniu propriu, pe care îl cumperi separat de la un registrar. Prețurile pot fi schimbate: verifică pe pagina Pricing.
 
 ## Dacă un părinte uită parola
 
@@ -90,6 +94,6 @@ cd ~/fond && python3.12 create_admin.py --reset NUMELE_TAU
 
 - Site-ul cere autentificare peste tot, folosește HTTPS, parole stocate hashuite, protecție CSRF, limită de încercări de autentificare și nu e indexat de motoarele de căutare. Adresa nu e însă secretă: oricine o află vede pagina de autentificare.
 - Părinții văd doar situația propriului copil (plăți, bife la rechizite), plus totalurile și cheltuielile clasei.
-- Pe server ajung nume de copii și sume plătite, pe o infrastructură din afara României. Informează părinții și obține acordul lor; dacă vrei mai puțină expunere, folosește nume + inițială.
+- Pe server ajung nume de copii și sume plătite. Pe site-ul european (`eu.pythonanywhere.com`) datele stau în Frankfurt, în UE. Informează părinții și obține acordul lor; dacă vrei mai puțină expunere, folosește nume + inițială.
 - Repo-ul de pe GitHub e public și conține doar codul: nici baza de date, nici parole, nici cheia secretă (`instance/` e exclus din git). Îl poți face privat din GitHub → Settings → Change visibility; atunci serverul are nevoie de o *deploy key* pentru `git pull`.
 - Nu partaja fișierul `instance/secret_key` și nu-l pune în git.
