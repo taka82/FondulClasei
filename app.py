@@ -23,6 +23,9 @@ INSTANCE_DIR.mkdir(exist_ok=True)
 app = Flask(__name__)
 app.config["DATABASE"] = os.environ.get("FOND_DB", str(INSTANCE_DIR / "fond.db"))
 app.config["MAX_CONTENT_LENGTH"] = 1024 * 1024
+# Pagina /setup (crearea primului cont din browser) e utila local; pe un server public se dezactiveaza
+# (vezi wsgi.py) si contul de casier se creeaza din consola: python create_admin.py
+app.config.setdefault("WEB_SETUP", True)
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
@@ -125,7 +128,20 @@ def security_headers(resp):
     resp.headers["X-Frame-Options"] = "DENY"
     resp.headers["Referrer-Policy"] = "same-origin"
     resp.headers["Cache-Control"] = "no-store"
+    resp.headers["X-Robots-Tag"] = "noindex, nofollow"
     return resp
+
+
+@app.route("/robots.txt")
+def robots():
+    return Response("User-agent: *\nDisallow: /\n", mimetype="text/plain")
+
+
+def not_configured():
+    """Nu exista niciun cont: local -> pagina de configurare; pe server -> mesaj (contul se creeaza din consola)."""
+    if app.config["WEB_SETUP"]:
+        return redirect(url_for("setup"))
+    return render_template("error.html", code=503, message="Aplicația nu a fost configurată încă."), 503
 
 
 def login_required(view):
@@ -133,7 +149,7 @@ def login_required(view):
     def wrapper(*a, **kw):
         if g.user is None:
             if db.scalar("SELECT COUNT(*) FROM users") == 0:
-                return redirect(url_for("setup"))
+                return not_configured()
             return redirect(url_for("login", next=request.path))
         return view(*a, **kw)
     return wrapper
@@ -171,7 +187,17 @@ def safe_next(target):
 
 
 PASSWORD_MIN = 8
+USERNAME_RE = re.compile(r"[A-Za-z0-9_.-]{3,32}")
 _failed = {}  # ip -> [timestamps]
+
+
+def credentials_error(username, password):
+    """Mesajul de eroare pentru un utilizator/parola nepotrivite, sau None daca sunt in regula."""
+    if not USERNAME_RE.fullmatch(username):
+        return "Utilizatorul trebuie să aibă 3-32 caractere (litere, cifre, . _ -)."
+    if len(password) < PASSWORD_MIN:
+        return f"Parola trebuie să aibă minim {PASSWORD_MIN} caractere."
+    return None
 
 
 def too_many_attempts(ip):
@@ -187,14 +213,15 @@ def too_many_attempts(ip):
 def setup():
     if db.scalar("SELECT COUNT(*) FROM users") > 0:
         return redirect(url_for("login"))
+    if not app.config["WEB_SETUP"]:
+        abort(404)
     if request.method == "POST":
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
         class_name = request.form.get("class_name", "").strip() or "Fondul clasei"
-        if not re.fullmatch(r"[A-Za-z0-9_.-]{3,32}", username):
-            flash("Utilizatorul trebuie să aibă 3-32 caractere (litere, cifre, . _ -).", "error")
-        elif len(password) < PASSWORD_MIN:
-            flash(f"Parola trebuie să aibă minim {PASSWORD_MIN} caractere.", "error")
+        error = credentials_error(username, password)
+        if error:
+            flash(error, "error")
         else:
             db.execute(
                 "INSERT INTO users(username, password_hash, role) VALUES (?, ?, 'admin')",
@@ -209,7 +236,7 @@ def setup():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if db.scalar("SELECT COUNT(*) FROM users") == 0:
-        return redirect(url_for("setup"))
+        return not_configured()
     if request.method == "POST":
         ip = request.remote_addr or "?"
         if too_many_attempts(ip):
@@ -566,10 +593,9 @@ def users():
         student_id = request.form.get("student_id") or None
         if role not in ("admin", "parent"):
             role = "parent"
-        if not re.fullmatch(r"[A-Za-z0-9_.-]{3,32}", username):
-            flash("Utilizatorul trebuie să aibă 3-32 caractere (litere, cifre, . _ -).", "error")
-        elif len(password) < PASSWORD_MIN:
-            flash(f"Parola trebuie să aibă minim {PASSWORD_MIN} caractere.", "error")
+        error = credentials_error(username, password)
+        if error:
+            flash(error, "error")
         elif db.one("SELECT 1 FROM users WHERE username = ?", (username,)):
             flash("Există deja un utilizator cu acest nume.", "error")
         elif role == "parent" and not student_id:

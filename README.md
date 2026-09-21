@@ -18,7 +18,9 @@ python -m venv .venv
 .venv\Scripts\python.exe app.py
 ```
 
-Deschide http://127.0.0.1:5000. La prima pornire se cere crearea contului de casier.
+Deschide http://127.0.0.1:5000. La prima pornire (local) se cere crearea contului de casier.
+
+**Pentru acces de oriunde** (părinții de pe telefon, de acasă) aplicația se pune online: vezi **[DEPLOY.md](DEPLOY.md)**, ghid pas cu pas pentru PythonAnywhere. Pe server, contul de casier se creează din consolă cu `create_admin.py`, iar pagina `/setup` din browser e dezactivată.
 
 Pentru acces din rețeaua locală (ex: părinții de pe telefon, în aceeași rețea): `set FOND_HOST=0.0.0.0` înainte de pornire. Pentru acces prin internet, pune aplicația în spatele unui reverse proxy cu HTTPS.
 
@@ -97,6 +99,14 @@ Reguli:
 - `ADD COLUMN` și `CREATE TABLE/INDEX` sunt simple. Pentru redenumiri/ștergeri de coloane SQLite are `RENAME COLUMN` / `DROP COLUMN`; schimbările mai complexe (tip, constrângeri) cer recrearea tabelului.
 - O coloană nouă `NOT NULL` trebuie să aibă `DEFAULT`, altfel migrarea eșuează pe rândurile existente.
 
+## Copii de siguranță
+
+```
+python backup_db.py
+```
+
+Creează o copie verificată în `instance/backups/` (se păstrează ultimele 14). Pe server se rulează zilnic ca sarcină programată (vezi DEPLOY.md).
+
 ## Publicarea actualizărilor (git + PythonAnywhere)
 
 Pe calculatorul tău: modifici codul, rulezi testele, apoi:
@@ -120,6 +130,7 @@ Apoi apeși **Reload** în tab-ul Web. Migrările noi se aplică automat la Relo
 ```
 .venv\Scripts\python.exe test_app.py
 .venv\Scripts\python.exe test_migrations.py
+.venv\Scripts\python.exe test_deploy.py
 ```
 
-`test_app.py` rulează un flux complet (configurare, plăți, cheltuieli, sold, drepturile părinților, CSRF, export). `test_migrations.py` verifică migrările: bază nouă, bază veche cu date, coloană nouă, migrare defectă, backup.
+`test_app.py` rulează un flux complet (configurare, plăți, cheltuieli, sold, drepturile părinților, CSRF, export). `test_migrations.py` verifică migrările: bază nouă, bază veche cu date, coloană nouă, migrare defectă, backup. `test_deploy.py` simulează producția (`wsgi.py`): fără `/setup` public, cont creat din consolă, cookie sigur/HTTPS, limită de încercări pe IP-ul real, copii de siguranță.
