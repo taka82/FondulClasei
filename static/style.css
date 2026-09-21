@@ -1,19 +1,27 @@
+/* Aspect inspirat de moisilbrasov.ro: antet bleumarin, bara de meniu inchisa la culoare, accent albastru,
+   Open Sans / Roboto, colturi putin rotunjite. Fara fonturi sau resurse de pe servere externe. */
 :root {
-  --bg: #f4f6f5;
+  --bg: #f4f4f5;
   --card: #ffffff;
-  --text: #1d2a27;
-  --muted: #64746f;
-  --line: #e1e7e4;
-  --accent: #0f766e;
+  --text: #444444;
+  --heading: #232323;
+  --muted: #71717a;
+  --line: #e4e4e7;
+  --accent: #207daf;
   --accent-text: #ffffff;
+  --navy: #1a2d4b;
+  --header-bg: #1a2d4b;
+  --header-muted: #b9c7da;
+  --nav-bg: #27272a;
+  --nav-active: #000000;
   --ok-bg: #dcf3e6; --ok: #146c3a;
   --warn-bg: #fdf0cf; --warn: #8a5a00;
   --bad-bg: #fbe0e0; --bad: #a12626;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #111716; --card: #1a2321; --text: #e6eeeb; --muted: #93a6a0; --line: #2a3733;
-    --accent: #2bb3a5; --accent-text: #08201d;
+    --bg: #18181b; --card: #232326; --text: #d4d4d8; --heading: #f4f4f5; --muted: #a1a1aa; --line: #3f3f46;
+    --accent: #4aa3d4; --accent-text: #08202e; --navy: #223a5e; --header-bg: #142238; --nav-bg: #0f0f11; --nav-active: #2c2c33;
     --ok-bg: #163a27; --ok: #7ad9a0;
     --warn-bg: #3d3010; --warn: #f0c96a;
     --bad-bg: #421c1c; --bad: #f19a9a;
@@ -23,30 +31,43 @@
 * { box-sizing: border-box; }
 body {
   margin: 0; background: var(--bg); color: var(--text);
-  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font: 16px/1.6 "Open Sans", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
 }
 .wrap { max-width: 1040px; margin: 0 auto; padding: 0 16px; }
-main.wrap { padding-top: 20px; padding-bottom: 48px; }
+main.wrap { padding-top: 24px; padding-bottom: 32px; min-height: 60vh; }
 a { color: var(--accent); }
-h1 { font-size: 1.6rem; margin: 0 0 16px; }
-h2 { font-size: 1.1rem; margin: 0 0 12px; }
+h1, h2, h3 { font-family: Roboto, "Segoe UI", system-ui, sans-serif; font-weight: 600; color: var(--heading); }
+h1 { font-size: 1.7rem; margin: 0 0 16px; line-height: 1.25; }
+h2 { font-size: 1.15rem; margin: 0 0 12px; }
 .muted { color: var(--muted); }
 .small { font-size: .85rem; }
 .crumb { margin: 0 0 4px; }
 
-/* bara de sus */
-.topbar { background: var(--card); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5; }
-.topbar-inner { display: flex; align-items: center; gap: 16px; min-height: 56px; flex-wrap: wrap; padding-top: 6px; padding-bottom: 6px; }
-.brand { font-weight: 700; color: var(--text); text-decoration: none; }
-nav { display: flex; gap: 4px; flex-wrap: wrap; flex: 1; }
-nav a { padding: 6px 10px; border-radius: 8px; text-decoration: none; color: var(--muted); }
-nav a:hover { background: var(--bg); }
-nav a.on { background: var(--accent); color: var(--accent-text); }
-.logout { display: flex; align-items: center; gap: 10px; margin: 0; }
-.who { color: var(--muted); text-decoration: none; font-size: .9rem; }
+/* antet bleumarin, ca pe moisilbrasov.ro (sigla optionala: static/logo.png, alba, se potriveste pe fundal bleumarin) */
+.site-header { background: var(--header-bg); color: #fff; }
+.header-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 18px; padding-bottom: 18px; }
+.brand { display: flex; align-items: center; gap: 16px; text-decoration: none; min-width: 0; }
+.brand-logo { height: 72px; width: auto; flex: none; }
+.brand-text { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+.school { font: 700 1.3rem Roboto, "Segoe UI", system-ui, sans-serif; color: #fff; }
+.sub { color: var(--header-muted); font-size: .95rem; }
+.logout { display: flex; align-items: center; gap: 12px; margin: 0; flex: none; }
+.who { color: var(--header-muted); text-decoration: none; font-size: .9rem; }
+.logout button.link { color: #fff; }
+
+/* bara de meniu: inchisa la culoare, linkuri majuscule, pagina activa pe fundal negru */
+.mainnav { background: var(--nav-bg); border-top: 3px solid #111; box-shadow: inset 0 0 2px rgba(0, 0, 0, .1); position: sticky; top: 0; z-index: 5; }
+.navlinks { display: flex; overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
+.navlinks::-webkit-scrollbar { display: none; }
+.navlinks a { color: #fff; text-decoration: none; text-transform: uppercase; font-size: .875rem; font-weight: 600; padding: 14px 16px; }
+.navlinks a:hover { background: rgba(255, 255, 255, .1); }
+.navlinks a.on { background: var(--nav-active); }
+
+.site-footer { background: var(--card); border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; text-align: center; padding: 18px 0; }
+@media (max-width: 560px) { .school { font-size: 1rem; } .brand-logo { height: 48px; } .header-row { padding-top: 12px; padding-bottom: 12px; } }
 
 /* carduri */
-.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px; margin-bottom: 16px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 4px; padding: 18px; margin-bottom: 16px; }
 .narrow { max-width: 440px; margin: 40px auto; }
 .grid2 { display: grid; gap: 16px; grid-template-columns: 1fr 1fr; align-items: start; }
 .grid2.wide-first { grid-template-columns: 2fr 1fr; }
@@ -54,8 +75,8 @@ nav a.on { background: var(--accent); color: var(--accent-text); }
 
 /* statistici */
 .stats { display: grid; gap: 12px; grid-template-columns: repeat(4, 1fr); margin-bottom: 16px; }
-.stat { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; }
-.stat.main { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+.stat { background: var(--card); border: 1px solid var(--line); border-radius: 4px; padding: 14px 16px; display: flex; flex-direction: column; }
+.stat.main { background: var(--navy); border-color: var(--navy); color: #fff; }
 .stat .label { font-size: .85rem; opacity: .8; }
 .stat .value { font-size: 1.35rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 .stat .value.neg { color: #ffd0d0; }
@@ -89,7 +110,7 @@ td.actions { text-align: right; white-space: nowrap; }
 .stack { display: grid; gap: 14px; }
 label { display: grid; gap: 4px; font-size: .9rem; font-weight: 600; }
 input, select, textarea {
-  font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px;
+  font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 3px;
   background: var(--bg); color: var(--text); width: 100%;
 }
 input:focus, select:focus, textarea:focus, button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -102,7 +123,7 @@ input:focus, select:focus, textarea:focus, button:focus-visible, a:focus-visible
 
 .btn {
   display: inline-block; font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; text-align: center;
-  padding: 9px 16px; border: 1px solid var(--accent); border-radius: 8px;
+  padding: 9px 16px; border: 1px solid var(--accent); border-radius: 3px;
   background: var(--accent); color: var(--accent-text);
 }
 .btn.small { padding: 5px 12px; font-size: .9rem; }
@@ -111,7 +132,7 @@ input:focus, select:focus, textarea:focus, button:focus-visible, a:focus-visible
 button.link { background: none; border: 0; padding: 0; font: inherit; color: var(--accent); cursor: pointer; text-decoration: underline; }
 button.link.danger { color: var(--bad); }
 
-.flash { padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; font-weight: 500; }
+.flash { padding: 10px 14px; border-radius: 3px; margin-bottom: 16px; font-weight: 500; }
 .flash.ok { background: var(--ok-bg); color: var(--ok); }
 .flash.error { background: var(--bad-bg); color: var(--bad); }
 
@@ -128,7 +149,7 @@ details.card summary { cursor: pointer; }
 .tag { display: inline-block; font-size: .78rem; padding: 2px 10px; border-radius: 999px; background: var(--line); font-weight: 600; }
 .stepper { display: inline-flex; align-items: center; gap: 6px; }
 .stepper form { margin: 0; }
-.stepper button { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--line); background: var(--card); color: var(--text); font: inherit; cursor: pointer; line-height: 1; }
+.stepper button { width: 28px; height: 28px; border-radius: 3px; border: 1px solid var(--line); background: var(--card); color: var(--text); font: inherit; cursor: pointer; line-height: 1; }
 .stepper button:hover { border-color: var(--accent); color: var(--accent); }
 .qty-num { min-width: 2.2ch; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
 tr.busy { opacity: .5; pointer-events: none; }

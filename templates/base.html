@@ -3,36 +3,47 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1a2d4b">
   <title>{% block title %}{{ class_name }}{% endblock %} · {{ class_name }}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-{% if user %}
-<header class="topbar">
-  <div class="wrap topbar-inner">
-    <a class="brand" href="{{ url_for('dashboard') }}">{{ class_name }}</a>
-    <nav>
-      <a href="{{ url_for('dashboard') }}" {% if request.endpoint == 'dashboard' %}class="on"{% endif %}>Panou</a>
-      {% if is_admin %}
-        <a href="{{ url_for('students') }}" {% if request.endpoint and request.endpoint.startswith('student') %}class="on"{% endif %}>Elevi</a>
-        <a href="{{ url_for('contributions') }}" {% if request.endpoint and request.endpoint.startswith('contribution') %}class="on"{% endif %}>Contribuții</a>
-      {% elif user['student_id'] %}
-        <a href="{{ url_for('me') }}" {% if request.endpoint == 'student_detail' %}class="on"{% endif %}>Situația mea</a>
-      {% endif %}
-      <a href="{{ url_for('supplies') }}" {% if request.endpoint and request.endpoint.startswith('suppl') %}class="on"{% endif %}>Rechizite</a>
-      <a href="{{ url_for('expenses') }}" {% if request.endpoint and request.endpoint.startswith('expense') %}class="on"{% endif %}>Cheltuieli</a>
-      {% if is_admin %}
-        <a href="{{ url_for('users') }}" {% if request.endpoint == 'users' %}class="on"{% endif %}>Conturi</a>
-        <a href="{{ url_for('settings') }}" {% if request.endpoint == 'settings' %}class="on"{% endif %}>Setări</a>
-      {% endif %}
-    </nav>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="{{ url_for('dashboard') if user else url_for('login') }}">
+      {% if has_logo %}<img class="brand-logo" src="{{ url_for('static', filename='logo.png') }}" alt="">{% endif %}
+      <span class="brand-text">
+        <span class="school">Colegiul Național de Informatică „Grigore Moisil”</span>
+        <span class="sub">Fondul clasei{% if class_name != 'Fondul clasei' %} · {{ class_name }}{% endif %}</span>
+      </span>
+    </a>
+    {% if user %}
     <form method="post" action="{{ url_for('logout') }}" class="logout">
       <input type="hidden" name="csrf" value="{{ csrf_token() }}">
       <a href="{{ url_for('account') }}" class="who">{{ user['username'] }}</a>
       <button class="link">Ieșire</button>
     </form>
+    {% endif %}
   </div>
 </header>
+{% if user %}
+<nav class="mainnav" aria-label="Meniu principal">
+  <div class="wrap navlinks">
+    <a href="{{ url_for('dashboard') }}" {% if request.endpoint == 'dashboard' %}class="on"{% endif %}>Panou</a>
+    {% if is_admin %}
+      <a href="{{ url_for('students') }}" {% if request.endpoint and request.endpoint.startswith('student') %}class="on"{% endif %}>Elevi</a>
+      <a href="{{ url_for('contributions') }}" {% if request.endpoint and request.endpoint.startswith('contribution') %}class="on"{% endif %}>Contribuții</a>
+    {% elif user['student_id'] %}
+      <a href="{{ url_for('me') }}" {% if request.endpoint == 'student_detail' %}class="on"{% endif %}>Situația mea</a>
+    {% endif %}
+    <a href="{{ url_for('supplies') }}" {% if request.endpoint and request.endpoint.startswith('suppl') %}class="on"{% endif %}>Rechizite</a>
+    <a href="{{ url_for('expenses') }}" {% if request.endpoint and request.endpoint.startswith('expense') %}class="on"{% endif %}>Cheltuieli</a>
+    {% if is_admin %}
+      <a href="{{ url_for('users') }}" {% if request.endpoint == 'users' %}class="on"{% endif %}>Conturi</a>
+      <a href="{{ url_for('settings') }}" {% if request.endpoint == 'settings' %}class="on"{% endif %}>Setări</a>
+    {% endif %}
+  </div>
+</nav>
 {% endif %}
 <main class="wrap">
   {% for category, message in get_flashed_messages(with_categories=true) %}
@@ -40,5 +51,8 @@
   {% endfor %}
   {% block content %}{% endblock %}
 </main>
+<footer class="site-footer">
+  <div class="wrap">© {{ year }} Fondul clasei · Aplicație a clasei, fără legătură oficială cu CNI Grigore Moisil.</div>
+</footer>
 </body>
 </html>

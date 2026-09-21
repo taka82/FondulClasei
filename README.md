@@ -56,6 +56,14 @@ Casierul editează tot. Părinții văd lista, statusurile și numărul total de
 
 Un elev transferat se **dezactivează**: nu mai apare la restanțe, dar plățile lui rămân în sold. Elevii și contribuțiile cu plăți înregistrate nu pot fi șterse.
 
+## Aspect
+
+Interfața are stilul site-ului colegiului (moisilbrasov.ro): antet bleumarin cu numele colegiului, bară de meniu neagră cu linkuri majuscule, accent albastru, fonturi Open Sans / Roboto și temă închisă automată dacă dispozitivul o folosește. Culorile sunt variabile CSS la începutul lui `static/style.css`.
+
+Fonturile se încarcă doar dacă sunt instalate pe dispozitiv (altfel se folosește fontul sistemului); nu se descarcă nimic de pe servere externe (Google Fonts), ca să nu se trimită adresele IP ale părinților către terți.
+
+**Sigla:** dacă ai acordul colegiului să o folosești, pune fișierul `static/logo.png` (recomandat: sigla albă pe fundal transparent, se potrivește pe antetul bleumarin, înălțime ~150 px). Apare automat în antet. Subsolul precizează că aplicația nu este un site oficial al colegiului.
+
 ## Date și backup
 
 Toate datele sunt în `instance/fond.db` (nu intră în git). Copiază acest fișier periodic ca backup. Fișierul `instance/secret_key` semnează sesiunile; nu îl partaja.
