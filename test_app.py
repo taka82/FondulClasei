@@ -93,6 +93,16 @@ def main():
     post(parent, "/login", {"username": "parinte1", "password": "parola123"})
     r = parent.get("/", follow_redirects=True).get_data(as_text=True)
     assert "Popescu Ana" in r and "Ultimele plăți" not in r
+    # parintele NU vede Panoul: e trimis la situatia copilului; soldul si totalurile clasei nu apar nicaieri la el
+    redirected = parent.get("/")
+    assert redirected.status_code == 302 and redirected.headers["Location"].endswith("/students/1")
+    for hidden in ("Sold curent", "Total încasat", "Total cheltuit", "Restanțe", "Panou"):
+        assert hidden not in r, f"parintele nu are voie sa vada: {hidden}"
+    assert parent.get("/me").headers["Location"].endswith("/students/1")
+    login_again = fond.app.test_client()
+    landing = login_again.post("/login", data={"username": "parinte1", "password": "parola123",
+                                                "csrf": token(login_again, "/login")})
+    assert landing.headers["Location"].endswith("/students/1"), "dupa autentificare parintele ajunge la copilul lui"
     assert parent.get("/me").headers["Location"].endswith("/students/1")
     assert "Fond septembrie" in parent.get("/students/1").get_data(as_text=True)
     assert parent.get("/students/2").status_code == 403, "parintele vede alt elev"
@@ -105,7 +115,7 @@ def main():
     r = parent.post("/expenses", data={"csrf": token(parent, "/expenses"), "spent_on": "2026-09-21",
                                       "category": "X", "amount": "1"})
     assert r.status_code == 403
-    r = parent.post("/payments", data={"csrf": token(parent, "/"), "student_id": "1", "contribution_id": "1",
+    r = parent.post("/payments", data={"csrf": token(parent, "/expenses"), "student_id": "1", "contribution_id": "1",
                                       "amount": "1", "paid_on": "2026-09-21"})
     assert r.status_code == 403
     assert parent.get("/export/expenses.csv").status_code == 200
@@ -115,11 +125,11 @@ def main():
         nav = re.search(r"<nav.*?</nav>", html, re.S).group(0)
         return re.findall(r'<a href="[^"]*"[^>]*>([^<]+)</a>', nav)
 
-    assert menu(parent.get("/students/1").get_data(as_text=True)) == ["Situația mea", "Rechizite", "Cheltuieli", "Panou"]
-    assert menu(parent.get("/").get_data(as_text=True)) == ["Situația mea", "Rechizite", "Cheltuieli", "Panou"]
+    assert menu(parent.get("/students/1").get_data(as_text=True)) == ["Situația mea", "Rechizite", "Cheltuieli"]
+    assert menu(parent.get("/supplies").get_data(as_text=True)) == ["Situația mea", "Rechizite", "Cheltuieli"]
     assert menu(admin.get("/").get_data(as_text=True)) == ["Panou", "Elevi", "Contribuții", "Rechizite", "Cheltuieli", "Conturi", "Setări"]
     assert 'class="on">Situația mea' in parent.get("/students/1").get_data(as_text=True)
-    assert 'class="on">Panou' in parent.get("/").get_data(as_text=True)
+    assert 'class="on">Panou' in admin.get("/").get_data(as_text=True)
 
     # --- rechizite: cantitatea de comandat vine din voturi (bifa "Ales")
     def ajax(client, url, data, page="/supplies"):
@@ -201,7 +211,7 @@ def main():
     assert re.search(r'class="ck paid" disabled', pd), "Plătit ramane dezactivat pentru parinte"
     pl = parent.get("/supplies").get_data(as_text=True)
     assert "Copilul meu" in pl and row(pl, "Caiet dictando") and 'class="order">2<' in pl
-    assert "Rechizite:" not in parent.get("/").get_data(as_text=True), "cardul cu bucati de comandat e doar pentru casier"
+    assert "Rechizite:" not in parent.get("/", follow_redirects=True).get_data(as_text=True), "cardul cu bucati de comandat e doar pentru casier"
     for url, data in (("/supplies", {"name": "X"}), ("/supplies/1/track", {"student_id": "1", "chosen": "1"}),
                       ("/supplies/1/edit", {"name": "X"}), ("/supplies/1/delete", {})):
         assert parent.post(url, data={**data, "csrf": token(parent, "/supplies")}).status_code == 403, url
@@ -345,7 +355,7 @@ def main():
     # panou: Restante = contributii + rechizite, cu mentiune separata
     dash = admin.get("/").get_data(as_text=True)
     assert "469,50 lei" in dash and "din care rechizite: 28,00 lei" in dash
-    assert "469,50 lei" in parent.get("/").get_data(as_text=True), "parintele vede acelasi total (agregat)"
+    assert "469,50 lei" not in parent.get("/", follow_redirects=True).get_data(as_text=True), "totalul restantelor clasei nu e pentru parinte"
     # pagina elevului: restanta la rechizite (si pentru parinte, doar a copilului lui)
     assert "Restanță la rechizite:" in parent.get("/students/1").get_data(as_text=True)
     assert "12,50 lei" in strip(re.search(r'<p class="owed-line">(.*?)</p>', parent.get("/students/1").get_data(as_text=True), re.S).group(1))

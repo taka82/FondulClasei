@@ -93,7 +93,7 @@ cd ~/fond && python3.12 create_admin.py --reset NUMELE_TAU
 ## Securitate și date personale
 
 - Site-ul cere autentificare peste tot, folosește HTTPS, parole stocate hashuite, protecție CSRF, limită de încercări de autentificare și nu e indexat de motoarele de căutare. Adresa nu e însă secretă: oricine o află vede pagina de autentificare.
-- Părinții văd doar situația propriului copil (plăți, bife la rechizite), plus totalurile și cheltuielile clasei.
+- Părinții văd doar situația propriului copil (contribuții, plăți, bife la rechizite), plus lista de rechizite și cheltuielile clasei. Panoul cu soldul, totalul încasat și restanțele clasei e doar pentru administrator și casier.
 - Pe server ajung nume de copii și sume plătite. Pe site-ul european (`eu.pythonanywhere.com`) datele stau în Frankfurt, în UE. Informează părinții și obține acordul lor; dacă vrei mai puțină expunere, folosește nume + inițială.
 - Repo-ul de pe GitHub e public și conține doar codul: nici baza de date, nici parole, nici cheia secretă (`instance/` e exclus din git). Îl poți face privat din GitHub → Settings → Change visibility; atunci serverul are nevoie de o *deploy key* pentru `git pull`.
 - Nu partaja fișierul `instance/secret_key` și nu-l pune în git.

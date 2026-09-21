@@ -32,7 +32,7 @@ Variabile opționale: `FOND_HOST`, `FOND_PORT`, `FOND_DB` (calea fișierului SQL
 |---|---|
 | **Administrator** | Tot, inclusiv **Conturi** (creează/șterge conturi, resetează parole) și **Setări** |
 | **Casier** | Tot ce ține de bani și rechizite: elevi, contribuții, plăți, cheltuieli, rechizite (inclusiv „Plătit”), exporturi. **Nu** vede Conturi și Setări |
-| **Părinte** | Citire: soldul, cheltuielile clasei și situația plăților propriului copil. La Rechizite poate bifa „Ales” și „Primit” pentru copilul lui (nu și „Plătit”) |
+| **Părinte** | Vede **doar situația propriului copil** (contribuții, plăți, rechizite), plus lista de rechizite și cheltuielile clasei. **Nu vede Panoul** (soldul, totalul încasat, restanțele clasei). La Rechizite poate bifa „Ales” și „Primit” pentru copilul lui (nu și „Plătit”) |
 
 Părinții nu văd plățile altor elevi.
 

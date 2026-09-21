@@ -10,7 +10,7 @@
 <body>
 <header class="site-header">
   <div class="wrap header-row">
-    <a class="brand" href="{{ url_for('dashboard') if user else url_for('login') }}">
+    <a class="brand" href="{{ home_url if user else url_for('login') }}">
       {% if has_logo %}<img class="brand-logo" src="{{ url_for('static', filename='logo.png') }}" alt="">{% endif %}
       <span class="brand-text">
         <span class="school">Colegiul Național de Informatică „Grigore Moisil”</span>
@@ -41,13 +41,12 @@
         <a href="{{ url_for('settings') }}" {% if request.endpoint == 'settings' %}class="on"{% endif %}>Setări</a>
       {% endif %}
     {% else %}
-      {# părinte: Situația mea | Rechizite | Cheltuieli | Panou #}
+      {# părinte: Situația mea | Rechizite | Cheltuieli (fără Panou: soldul și totalurile clasei sunt doar pentru administrator și casier) #}
       {% if user['student_id'] %}
         <a href="{{ url_for('me') }}" {% if request.endpoint == 'student_detail' %}class="on"{% endif %}>Situația mea</a>
       {% endif %}
       <a href="{{ url_for('supplies') }}" {% if request.endpoint and request.endpoint.startswith('suppl') %}class="on"{% endif %}>Rechizite</a>
       <a href="{{ url_for('expenses') }}" {% if request.endpoint and request.endpoint.startswith('expense') %}class="on"{% endif %}>Cheltuieli</a>
-      <a href="{{ url_for('dashboard') }}" {% if request.endpoint == 'dashboard' %}class="on"{% endif %}>Panou</a>
     {% endif %}
   </div>
 </nav>

@@ -185,6 +185,17 @@ def is_admin():
     return g.user is not None and g.user["role"] == "admin"
 
 
+def home_url():
+    """Pagina de start: Panou pentru administrator/casier, situatia copilului pentru parinte."""
+    if g.get("user") is None:
+        return url_for("login")
+    if is_staff():
+        return url_for("dashboard")
+    if g.user["student_id"]:
+        return url_for("student_detail", student_id=g.user["student_id"])
+    return url_for("supplies")
+
+
 @app.context_processor
 def inject_globals():
     return {
@@ -192,6 +203,7 @@ def inject_globals():
         "is_staff": is_staff(),
         "is_admin": is_admin(),
         "class_name": db.get_setting("class_name", "Fondul clasei"),
+        "home_url": home_url() if g.get("user") else None,
         "has_logo": (BASE_DIR / "static" / "logo.png").exists(),  # sigla optionala: pune fisierul static/logo.png
     }
 
@@ -265,7 +277,8 @@ def login():
             session.clear()
             session.permanent = True
             session["uid"] = row["id"]
-            return redirect(safe_next(request.args.get("next")) or url_for("dashboard"))
+            g.user = row   # ca sa se poata alege pagina de start dupa rol
+            return redirect(safe_next(request.args.get("next")) or home_url())
         _failed.setdefault(ip, []).append(time.time())
         flash("Utilizator sau parolă greșite.", "error")
     return render_template("login.html")
@@ -282,6 +295,8 @@ def logout():
 @app.route("/")
 @login_required
 def dashboard():
+    if not is_staff():
+        return redirect(home_url())
     opening = int(db.get_setting("opening_balance", "0") or 0)
     collected = db.scalar("SELECT COALESCE(SUM(amount), 0) FROM payments")
     spent = db.scalar("SELECT COALESCE(SUM(amount), 0) FROM expenses")
@@ -296,17 +311,12 @@ def dashboard():
     recent_expenses = db.query(
         "SELECT * FROM expenses ORDER BY spent_on DESC, id DESC LIMIT 5"
     )
-    recent_payments = []
-    my_student = None
-    if is_staff():
-        recent_payments = db.query(
-            "SELECT p.*, s.name AS student, c.name AS contribution FROM payments p "
-            "JOIN students s ON s.id = p.student_id "
-            "JOIN contributions c ON c.id = p.contribution_id "
-            "ORDER BY p.paid_on DESC, p.id DESC LIMIT 8"
-        )
-    elif g.user["student_id"]:
-        my_student = db.one("SELECT * FROM students WHERE id = ?", (g.user["student_id"],))
+    recent_payments = db.query(
+        "SELECT p.*, s.name AS student, c.name AS contribution FROM payments p "
+        "JOIN students s ON s.id = p.student_id "
+        "JOIN contributions c ON c.id = p.contribution_id "
+        "ORDER BY p.paid_on DESC, p.id DESC LIMIT 8"
+    )
     return render_template(
         "dashboard.html", opening=opening, collected=collected, spent=spent, supply_stats=supply_stats(),
         balance=opening + collected - spent, outstanding=outstanding,
@@ -316,7 +326,7 @@ def dashboard():
             "JOIN students st ON st.id = t.student_id AND st.active = 1 "
             "WHERE t.chosen = 1 AND t.paid = 0"),
         by_category=by_category, recent_expenses=recent_expenses,
-        recent_payments=recent_payments, my_student=my_student,
+        recent_payments=recent_payments,
     )
 
 
@@ -392,9 +402,7 @@ def student_detail(student_id):
 @app.route("/me")
 @login_required
 def me():
-    if is_staff() or not g.user["student_id"]:
-        return redirect(url_for("dashboard"))
-    return redirect(url_for("student_detail", student_id=g.user["student_id"]))
+    return redirect(home_url())
 
 
 @app.post("/students/<int:student_id>/edit")
@@ -695,7 +703,7 @@ def account():
             db.execute("UPDATE users SET password_hash = ? WHERE id = ?",
                        (generate_password_hash(request.form["new"]), g.user["id"]))
             flash("Parolă schimbată.", "ok")
-            return redirect(url_for("dashboard"))
+            return redirect(home_url())
     return render_template("account.html")
 
 

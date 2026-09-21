@@ -4,6 +4,6 @@
 <div class="narrow card">
   <h1>Eroare {{ code }}</h1>
   <p>{{ message }}</p>
-  <p><a class="btn" href="{{ url_for('dashboard') }}">Înapoi la panou</a></p>
+  <p><a class="btn" href="{{ home_url or url_for('login') }}">{{ 'Înapoi' if home_url else 'Autentificare' }}</a></p>
 </div>
 {% endblock %}
