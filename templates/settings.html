@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Setări{% endblock %}
+{% block content %}
+<div class="narrow card">
+  <h1>Setări</h1>
+  <form method="post" class="stack">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <label>Numele clasei <input name="class_name" value="{{ class_name }}" maxlength="80"></label>
+    <label>Sold inițial (lei)
+      <input name="opening_balance" inputmode="decimal" value="{{ money_to_input(opening) if opening else '' }}" placeholder="0">
+    </label>
+    <p class="muted small">Soldul reportat din anul anterior, dacă există. Se adaugă la total.</p>
+    <button class="btn">Salvează</button>
+  </form>
+</div>
+{% endblock %}

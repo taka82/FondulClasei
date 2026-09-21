@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status %}
+{% block title %}{{ contribution['name'] }}{% endblock %}
+{% block content %}
+<p class="crumb"><a href="{{ url_for('contributions') }}">← Contribuții</a></p>
+<h1>{{ contribution['name'] }}</h1>
+<p class="muted">
+  {{ contribution['amount']|money }} per elev
+  {% if contribution['due_date'] %}· termen {{ contribution['due_date']|ro_date }}{% endif %}
+  {% if contribution['note'] %}· {{ contribution['note'] }}{% endif %}
+</p>
+
+<section class="card">
+  <div class="scroll"><table>
+    <thead><tr><th>Elev</th><th class="num">Plătit</th><th class="num">Rest</th><th>Stare</th><th>Adaugă plată</th></tr></thead>
+    {% for r in rows %}
+    <tr class="{{ 'dim' if not r['active'] }}">
+      <td><a href="{{ url_for('student_detail', student_id=r['id']) }}">{{ r['name'] }}</a></td>
+      <td class="num">{{ r['paid']|money }}</td>
+      <td class="num {{ 'owed' if r['paid'] < contribution['amount'] and r['active'] }}">{{ ([contribution['amount'] - r['paid'], 0]|max)|money }}</td>
+      <td>{{ status(r['paid'], contribution['amount']) }}</td>
+      <td>
+        {% if r['paid'] < contribution['amount'] %}
+        <form method="post" action="{{ url_for('payment_add') }}" class="quickpay">
+          <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+          <input type="hidden" name="student_id" value="{{ r['id'] }}">
+          <input type="hidden" name="contribution_id" value="{{ contribution['id'] }}">
+          <input type="hidden" name="paid_on" value="{{ today }}">
+          <input type="hidden" name="next" value="{{ request.path }}">
+          <input name="amount" value="{{ money_to_input(contribution['amount'] - r['paid']) }}" inputmode="decimal" aria-label="Suma" size="7">
+          <button class="btn small">Plătit</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5" class="muted">Niciun elev activ. <a href="{{ url_for('students') }}">Adaugă elevi</a>.</td></tr>
+    {% endfor %}
+  </table></div>
+  <p class="muted small">Butonul „Plătit” înregistrează suma completă cu data de azi. Poți modifica suma pentru plăți parțiale.</p>
+</section>
+
+<section class="card">
+  <h2>Setări contribuție</h2>
+  <a class="btn small secondary" href="{{ url_for('contribution_edit', cid=contribution['id']) }}">Modifică</a>
+  <form method="post" action="{{ url_for('contribution_delete', cid=contribution['id']) }}" class="inline"
+        onsubmit="return confirm('Ștergi contribuția?')">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <button class="btn small danger">Șterge</button>
+  </form>
+  <p class="muted small">O contribuție cu plăți înregistrate nu poate fi ștearsă.</p>
+</section>
+{% endblock %}

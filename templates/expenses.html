@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% from "_macros.html" import delete_button %}
+{% block title %}Cheltuieli{% endblock %}
+{% block content %}
+<h1>Cheltuieli</h1>
+
+<div class="grid2 {{ 'wide-first' if is_admin }}">
+  <section class="card">
+    {% if expenses %}
+    <div class="scroll"><table>
+      <thead><tr><th>Data</th><th>Categorie</th><th>Descriere</th><th class="num">Suma</th>{% if is_admin %}<th></th>{% endif %}</tr></thead>
+      {% for e in expenses %}
+      <tr>
+        <td class="nowrap">{{ e['spent_on']|ro_date }}</td>
+        <td>{{ e['category'] }}</td>
+        <td class="muted">{{ e['description'] }}</td>
+        <td class="num">{{ e['amount']|money }}</td>
+        {% if is_admin %}
+        <td class="actions nowrap">
+          <a href="{{ url_for('expense_edit', expense_id=e['id']) }}">Modifică</a>
+          {{ delete_button(url_for('expense_delete', expense_id=e['id']), None, 'Ștergi această cheltuială?') }}
+        </td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+      <tfoot><tr><th colspan="3">Total</th><th class="num">{{ total|money }}</th>{% if is_admin %}<th></th>{% endif %}</tr></tfoot>
+    </table></div>
+    <p><a href="{{ url_for('export_expenses') }}">Descarcă (CSV)</a></p>
+    {% else %}
+      <p class="muted">Nicio cheltuială înregistrată.</p>
+    {% endif %}
+  </section>
+
+  {% if is_admin %}
+  <section class="card">
+    <h2>Cheltuială nouă</h2>
+    <form method="post" class="stack">
+      <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+      <label>Data <input name="spent_on" type="date" value="{{ today }}" required></label>
+      <label>Categorie
+        <input name="category" list="cats" required maxlength="50" placeholder="ex: Cadouri, Excursie, Materiale">
+        <datalist id="cats">
+          {% for c in categories %}<option value="{{ c }}">{% endfor %}
+          {% if not categories %}
+            <option value="Cadouri"><option value="Excursie"><option value="Materiale"><option value="Petrecere"><option value="Altele">
+          {% endif %}
+        </datalist>
+      </label>
+      <label>Suma (lei) <input name="amount" required inputmode="decimal"></label>
+      <label>Descriere (opțional) <input name="description" maxlength="300"></label>
+      <button class="btn">Adaugă</button>
+    </form>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% from "_macros.html" import delete_button %}
+{% block title %}Conturi{% endblock %}
+{% block content %}
+<h1>Conturi</h1>
+<p class="muted">Părinții văd soldul și cheltuielile clasei, plus situația plăților propriului copil. Nu pot modifica nimic.</p>
+
+<div class="grid2 wide-first">
+  <section class="card">
+    <div class="scroll"><table>
+      <thead><tr><th>Utilizator</th><th>Rol</th><th>Elev</th><th>Parolă nouă</th><th></th></tr></thead>
+      {% for u in users %}
+      <tr>
+        <td>{{ u['username'] }}</td>
+        <td>{{ 'Casier' if u['role'] == 'admin' else 'Părinte' }}</td>
+        <td>{{ u['student'] or '' }}</td>
+        <td>
+          <form method="post" action="{{ url_for('user_password', user_id=u['id']) }}" class="quickpay">
+            <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+            <input name="password" type="password" minlength="8" placeholder="min. 8 caractere" autocomplete="new-password" aria-label="Parolă nouă" required>
+            <button class="btn small secondary">Schimbă</button>
+          </form>
+        </td>
+        <td class="actions">
+          {% if u['id'] != user['id'] %}{{ delete_button(url_for('user_delete', user_id=u['id']), None, 'Ștergi contul?') }}{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </table></div>
+  </section>
+
+  <section class="card">
+    <h2>Cont nou</h2>
+    <form method="post" class="stack">
+      <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+      <label>Rol
+        <select name="role" id="role">
+          <option value="parent">Părinte (doar citire)</option>
+          <option value="admin">Casier (poate edita)</option>
+        </select>
+      </label>
+      <label id="student-row">Elev asociat
+        <select name="student_id">
+          <option value="">— alege —</option>
+          {% for s in students %}<option value="{{ s['id'] }}">{{ s['name'] }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>Utilizator <input name="username" required minlength="3" maxlength="32" autocomplete="off"></label>
+      <label>Parolă inițială <input name="password" type="password" required minlength="8" autocomplete="new-password"></label>
+      <button class="btn">Creează contul</button>
+    </form>
+  </section>
+</div>
+<script>
+  const role = document.getElementById('role'), row = document.getElementById('student-row');
+  const sync = () => row.style.display = role.value === 'parent' ? '' : 'none';
+  role.addEventListener('change', sync); sync();
+</script>
+{% endblock %}

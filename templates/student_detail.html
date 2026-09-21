@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status, delete_button %}
+{% block title %}{{ student['name'] }}{% endblock %}
+{% block content %}
+{% if is_admin %}<p class="crumb"><a href="{{ url_for('students') }}">← Elevi</a></p>{% endif %}
+<h1>{{ student['name'] }} {% if not student['active'] %}<span class="badge">inactiv</span>{% endif %}</h1>
+
+<section class="card">
+  <h2>Contribuții</h2>
+  {% if rows %}
+  <div class="scroll"><table>
+    <thead><tr><th>Contribuție</th><th>Termen</th><th class="num">De plătit</th><th class="num">Plătit</th><th class="num">Rest</th><th>Stare</th>{% if is_admin %}<th>Adaugă plată</th>{% endif %}</tr></thead>
+    {% for r in rows %}
+    <tr>
+      <td>{{ r['name'] }}</td>
+      <td class="nowrap">{{ r['due_date']|ro_date }}</td>
+      <td class="num">{{ r['amount']|money }}</td>
+      <td class="num">{{ r['paid']|money }}</td>
+      <td class="num {{ 'owed' if r['paid'] < r['amount'] }}">{{ ([r['amount'] - r['paid'], 0]|max)|money }}</td>
+      <td>{{ status(r['paid'], r['amount']) }}</td>
+      {% if is_admin %}
+      <td>
+        {% if r['paid'] < r['amount'] %}
+        <form method="post" action="{{ url_for('payment_add') }}" class="quickpay">
+          <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+          <input type="hidden" name="student_id" value="{{ student['id'] }}">
+          <input type="hidden" name="contribution_id" value="{{ r['id'] }}">
+          <input type="hidden" name="paid_on" value="{{ today }}">
+          <input type="hidden" name="next" value="{{ request.path }}">
+          <input name="amount" value="{{ money_to_input(r['amount'] - r['paid']) }}" inputmode="decimal" aria-label="Suma" size="7">
+          <button class="btn small">Plătit</button>
+        </form>
+        {% endif %}
+      </td>
+      {% endif %}
+    </tr>
+    {% endfor %}
+  </table></div>
+  {% else %}
+    <p class="muted">Nu există contribuții.</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>Istoric plăți</h2>
+  {% if payments %}
+  <div class="scroll"><table>
+    <thead><tr><th>Data</th><th>Contribuție</th><th class="num">Suma</th><th>Observații</th>{% if is_admin %}<th></th>{% endif %}</tr></thead>
+    {% for p in payments %}
+    <tr>
+      <td class="nowrap">{{ p['paid_on']|ro_date }}</td>
+      <td>{{ p['contribution'] }}</td>
+      <td class="num">{{ p['amount']|money }}</td>
+      <td class="muted">{{ p['note'] }}</td>
+      {% if is_admin %}<td class="actions">{{ delete_button(url_for('payment_delete', payment_id=p['id']), request.path, 'Ștergi această plată?') }}</td>{% endif %}
+    </tr>
+    {% endfor %}
+  </table></div>
+  {% else %}
+    <p class="muted">Nicio plată înregistrată.</p>
+  {% endif %}
+</section>
+
+{% if is_admin %}
+<section class="card">
+  <h2>Setări elev</h2>
+  <form method="post" action="{{ url_for('student_edit', student_id=student['id']) }}" class="inlineform">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <label>Nume <input name="name" value="{{ student['name'] }}" required maxlength="100"></label>
+    <button class="btn small">Redenumește</button>
+  </form>
+  <div class="row-actions">
+    <form method="post" action="{{ url_for('student_toggle', student_id=student['id']) }}" class="inline">
+      <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+      <button class="btn small secondary">{{ 'Dezactivează elevul' if student['active'] else 'Reactivează elevul' }}</button>
+    </form>
+    {% if not payments %}
+    <form method="post" action="{{ url_for('student_delete', student_id=student['id']) }}" class="inline"
+          onsubmit="return confirm('Ștergi definitiv elevul?')">
+      <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+      <button class="btn small danger">Șterge elevul</button>
+    </form>
+    {% endif %}
+  </div>
+  <p class="muted small">Un elev dezactivat (ex: transferat) nu mai apare în restanțe, dar plățile lui rămân în sold.</p>
+</section>
+{% endif %}
+{% endblock %}

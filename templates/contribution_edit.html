@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Modifică contribuția{% endblock %}
+{% block content %}
+<div class="narrow card">
+  <h1>Modifică contribuția</h1>
+  <form method="post" class="stack">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <label>Denumire <input name="name" required maxlength="100" value="{{ request.form.get('name', contribution['name']) }}"></label>
+    <label>Suma per elev (lei) <input name="amount" required inputmode="decimal" value="{{ request.form.get('amount', money_to_input(contribution['amount'])) }}"></label>
+    <label>Termen <input name="due_date" type="date" value="{{ request.form.get('due_date', contribution['due_date'] or '') }}"></label>
+    <label>Note <input name="note" maxlength="300" value="{{ request.form.get('note', contribution['note'] or '') }}"></label>
+    <div class="row-actions">
+      <button class="btn">Salvează</button>
+      <a class="btn secondary" href="{{ url_for('contribution_detail', cid=contribution['id']) }}">Renunță</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

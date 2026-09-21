@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Configurare inițială{% endblock %}
+{% block content %}
+<div class="narrow card">
+  <h1>Bine ai venit!</h1>
+  <p class="muted">Creează contul de casier (administrator). Îl vei folosi pentru a introduce plățile și cheltuielile.</p>
+  <form method="post" class="stack">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <label>Numele clasei
+      <input name="class_name" placeholder="ex: Clasa a IX-a B" maxlength="80">
+    </label>
+    <label>Utilizator
+      <input name="username" required autocomplete="username" minlength="3" maxlength="32">
+    </label>
+    <label>Parolă (minim 8 caractere)
+      <input name="password" type="password" required autocomplete="new-password" minlength="8">
+    </label>
+    <button class="btn">Creează contul</button>
+  </form>
+</div>
+{% endblock %}

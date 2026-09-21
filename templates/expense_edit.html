@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Modifică cheltuiala{% endblock %}
+{% block content %}
+<div class="narrow card">
+  <h1>Modifică cheltuiala</h1>
+  <form method="post" class="stack">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <label>Data <input name="spent_on" type="date" required value="{{ request.form.get('spent_on', expense['spent_on']) }}"></label>
+    <label>Categorie
+      <input name="category" list="cats" required maxlength="50" value="{{ request.form.get('category', expense['category']) }}">
+      <datalist id="cats">{% for c in categories %}<option value="{{ c }}">{% endfor %}</datalist>
+    </label>
+    <label>Suma (lei) <input name="amount" required inputmode="decimal" value="{{ request.form.get('amount', money_to_input(expense['amount'])) }}"></label>
+    <label>Descriere <input name="description" maxlength="300" value="{{ request.form.get('description', expense['description'] or '') }}"></label>
+    <div class="row-actions">
+      <button class="btn">Salvează</button>
+      <a class="btn secondary" href="{{ url_for('expenses') }}">Renunță</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

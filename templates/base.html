@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ class_name }}{% endblock %} · {{ class_name }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+{% if user %}
+<header class="topbar">
+  <div class="wrap bar">
+    <a class="brand" href="{{ url_for('dashboard') }}">{{ class_name }}</a>
+    <nav>
+      <a href="{{ url_for('dashboard') }}" {% if request.endpoint == 'dashboard' %}class="on"{% endif %}>Panou</a>
+      {% if is_admin %}
+        <a href="{{ url_for('students') }}" {% if request.endpoint and request.endpoint.startswith('student') %}class="on"{% endif %}>Elevi</a>
+        <a href="{{ url_for('contributions') }}" {% if request.endpoint and request.endpoint.startswith('contribution') %}class="on"{% endif %}>Contribuții</a>
+      {% elif user['student_id'] %}
+        <a href="{{ url_for('me') }}" {% if request.endpoint == 'student_detail' %}class="on"{% endif %}>Situația mea</a>
+      {% endif %}
+      <a href="{{ url_for('expenses') }}" {% if request.endpoint and request.endpoint.startswith('expense') %}class="on"{% endif %}>Cheltuieli</a>
+      {% if is_admin %}
+        <a href="{{ url_for('users') }}" {% if request.endpoint == 'users' %}class="on"{% endif %}>Conturi</a>
+        <a href="{{ url_for('settings') }}" {% if request.endpoint == 'settings' %}class="on"{% endif %}>Setări</a>
+      {% endif %}
+    </nav>
+    <form method="post" action="{{ url_for('logout') }}" class="logout">
+      <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+      <a href="{{ url_for('account') }}" class="who">{{ user['username'] }}</a>
+      <button class="link">Ieșire</button>
+    </form>
+  </div>
+</header>
+{% endif %}
+<main class="wrap">
+  {% for category, message in get_flashed_messages(with_categories=true) %}
+    <div class="flash {{ category }}">{{ message }}</div>
+  {% endfor %}
+  {% block content %}{% endblock %}
+</main>
+</body>
+</html>

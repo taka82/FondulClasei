@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Panou{% endblock %}
+{% block content %}
+<h1>Panou</h1>
+
+<section class="stats">
+  <div class="stat main">
+    <span class="label">Sold curent</span>
+    <span class="value {{ 'neg' if balance < 0 }}">{{ balance|money }}</span>
+  </div>
+  <div class="stat"><span class="label">Total încasat</span><span class="value">{{ collected|money }}</span></div>
+  <div class="stat"><span class="label">Total cheltuit</span><span class="value">{{ spent|money }}</span></div>
+  <div class="stat"><span class="label">Restanțe</span><span class="value">{{ outstanding|money }}</span></div>
+</section>
+{% if opening %}
+  <p class="muted small">Soldul include {{ opening|money }} raportați din anul anterior.</p>
+{% endif %}
+
+{% if my_student %}
+<div class="card">
+  <strong>{{ my_student['name'] }}</strong> ·
+  <a href="{{ url_for('me') }}">Vezi situația plăților</a>
+</div>
+{% endif %}
+
+<div class="grid2">
+  <section class="card">
+    <h2>Cheltuieli pe categorii</h2>
+    {% if by_category %}
+      {% set top = by_category[0]['total'] %}
+      <ul class="bars">
+      {% for c in by_category %}
+        <li>
+          <div class="row"><span>{{ c['category'] }}</span><span>{{ c['total']|money }}</span></div>
+          <div class="bar"><i style="width: {{ (c['total'] * 100 / top)|round|int }}%"></i></div>
+        </li>
+      {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted">Nicio cheltuială înregistrată.</p>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <h2>Ultimele cheltuieli</h2>
+    {% if recent_expenses %}
+    <table>
+      {% for e in recent_expenses %}
+      <tr>
+        <td class="nowrap">{{ e['spent_on']|ro_date }}</td>
+        <td>{{ e['category'] }}{% if e['description'] %}<br><span class="muted small">{{ e['description'] }}</span>{% endif %}</td>
+        <td class="num">{{ e['amount']|money }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    <p><a href="{{ url_for('expenses') }}">Toate cheltuielile →</a></p>
+    {% else %}
+      <p class="muted">Nicio cheltuială înregistrată.</p>
+    {% endif %}
+  </section>
+</div>
+
+{% if is_admin %}
+<section class="card">
+  <h2>Ultimele plăți</h2>
+  {% if recent_payments %}
+  <div class="scroll"><table>
+    <thead><tr><th>Data</th><th>Elev</th><th>Contribuție</th><th class="num">Suma</th></tr></thead>
+    {% for p in recent_payments %}
+    <tr>
+      <td class="nowrap">{{ p['paid_on']|ro_date }}</td>
+      <td><a href="{{ url_for('student_detail', student_id=p['student_id']) }}">{{ p['student'] }}</a></td>
+      <td>{{ p['contribution'] }}</td>
+      <td class="num">{{ p['amount']|money }}</td>
+    </tr>
+    {% endfor %}
+  </table></div>
+  {% else %}
+    <p class="muted">Nicio plată încă. Începe prin a <a href="{{ url_for('students') }}">adăuga elevii</a> și a <a href="{{ url_for('contributions') }}">crea o contribuție</a>.</p>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

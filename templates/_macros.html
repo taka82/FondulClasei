@@ -1,0 +1,14 @@
+{% macro status(paid, amount) %}
+  {% if paid >= amount %}<span class="badge ok">Plătit</span>
+  {% elif paid > 0 %}<span class="badge warn">Parțial</span>
+  {% else %}<span class="badge bad">Neplătit</span>{% endif %}
+{% endmacro %}
+
+{% macro delete_button(action, next, confirm) %}
+  <form method="post" action="{{ action }}" class="inline"
+        onsubmit="return confirm('{{ confirm }}')">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+    <button class="link danger">Șterge</button>
+  </form>
+{% endmacro %}
