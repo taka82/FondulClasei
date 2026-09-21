@@ -29,7 +29,7 @@ Variabile opționale: `FOND_HOST`, `FOND_PORT`, `FOND_DB` (calea fișierului SQL
 | Rol | Poate |
 |---|---|
 | **Casier** | Tot: elevi, contribuții, plăți, cheltuieli, conturi, setări, exporturi |
-| **Părinte** | Doar citire: soldul, cheltuielile clasei și situația plăților propriului copil |
+| **Părinte** | Citire: soldul, cheltuielile clasei și situația plăților propriului copil. La Rechizite poate bifa „Ales” pentru copilul lui (nimic altceva) |
 
 Părinții nu văd plățile altor elevi.
 
@@ -50,7 +50,7 @@ Pagina **Rechizite** ține lista de rechizite ale clasei (denumire, categorie, o
 - **Plătit**: a achitat suma
 - **Primit**: rechizitul a ajuns la elev
 
-**Cât trebuie comandat** rezultă din voturi: fiecare elev activ care a bifat „Ales” înseamnă o bucată. Coloana *De comandat* din listă arată numărul de voturi (din totalul de elevi), iar sus apar totalul de bucăți de comandat, câte rechizite au voturi și câte nu. În pagina *detalii* a rechizitului (link „Bifează”) bifezi fiecare elev, iar bifele se salvează imediat. Există căutare, filtre pe categorie și pe voturi (cu / fără), sortare pe coloane și export CSV (cu numele elevilor și „De comandat”).
+**Cât trebuie comandat** rezultă din voturi: fiecare elev activ care a bifat „Ales” înseamnă o bucată. Coloana *De comandat* din listă arată numărul de voturi (din totalul de elevi). În pagina *detalii* a rechizitului (link „Bifează”) bifezi fiecare elev, iar bifele se salvează imediat. Există căutare, filtre pe categorie și pe voturi (cu / fără), sortare pe coloane și export CSV (cu numele elevilor și „De comandat”).
 
 **Cine poate bifa ce:**
 
