@@ -253,6 +253,19 @@ def main():
     assert 'data-field="chosen"' in pl and 'data-field="received"' in pl and 'data-field="paid"' not in pl
     assert 'class="vote"' not in admin.get("/supplies").get_data(as_text=True)
 
+    # pagina "Situatia mea" a parintelui arata rechizitele copilului, inclusiv ce a platit
+    # (elevul 1: Caiet = ales + primit, neplatit; Engleza = ales + platit; Foarfeca = neatinsa)
+    mine_page = parent.get("/students/1").get_data(as_text=True)
+    assert "<h2>Rechizite</h2>" in mine_page
+    assert row(mine_page, "Engleza") and row(mine_page, "Caiet dictando") and not row(mine_page, "Foarfeca")
+    assert 'badge ok">Plătit' in mine_page, "manualul platit apare cu starea Plătit"
+    assert 'badge warn">Neplătit' in mine_page, "rechizitul ales dar neplatit apare ca Neplătit"
+    # casierul vede aceleasi date pe pagina elevului, iar alt elev are doar rechizitele lui
+    assert row(admin.get("/students/1").get_data(as_text=True), "Engleza")
+    other = admin.get("/students/2").get_data(as_text=True)
+    assert row(other, "Caiet dictando") and not row(other, "Engleza"), "elevul 2 nu are Engleza"
+    assert "Niciun rechizit ales" in admin.get("/students/3").get_data(as_text=True)
+
     # export (admin): cantitatea de comandat si numele elevilor pe coloane
     csv_text = admin.get("/export/supplies.csv").get_data(as_text=True).replace("\r", "")
     assert csv_text.startswith("\ufeffRechizit;Categorie;De comandat (buc.);Ales de")

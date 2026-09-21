@@ -347,8 +347,14 @@ def student_detail(student_id):
         "JOIN contributions c ON c.id = p.contribution_id "
         "WHERE p.student_id = ? ORDER BY p.paid_on DESC, p.id DESC", (student_id,)
     )
-    return render_template("student_detail.html", student=student, rows=rows,
-                           payments=payments, today=date.today().isoformat())
+    supplies_of_student = db.query(
+        "SELECT sp.id, sp.name, sp.category, t.chosen, t.paid, t.received FROM supply_tracking t "
+        "JOIN supplies sp ON sp.id = t.supply_id "
+        "WHERE t.student_id = ? AND (t.chosen OR t.paid OR t.received) ORDER BY sp.name COLLATE NOCASE",
+        (student_id,)
+    )
+    return render_template("student_detail.html", student=student, rows=rows, payments=payments,
+                           student_supplies=supplies_of_student, today=date.today().isoformat())
 
 
 @app.route("/me")
