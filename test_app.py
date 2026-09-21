@@ -3,6 +3,7 @@
 Rulare: .venv\\Scripts\\python.exe test_app.py
 """
 import os
+from datetime import date
 import re
 import sqlite3
 import tempfile
@@ -369,6 +370,61 @@ def main():
     assert "Vasile Dan;Rechizit: Caiet mate;3,00;0,00;3,00" in restante
     assert "Vasile Dan;Rechizit: Fara pret (fără preț);;0,00;" in restante
     assert "Engleza" not in restante, "rechizitul platit nu e restanta"
+
+    # --- plata la rechizite apare in Istoric plati (data + suma de la momentul platii)
+    today_iso = date.today().isoformat()
+
+    def paid_state(supply_id, student_id):
+        return sql("SELECT paid, paid_on, paid_amount FROM supply_tracking WHERE supply_id = ? AND student_id = ?",
+                   supply_id, student_id)
+
+    def history_rows(html):
+        section = re.search(r"<h2>Istoric plăți</h2>(.*?)</section>", html, re.S).group(1)
+        rows = [r for r in re.findall(r"<tr>(.*?)</tr>", section, re.S) if "<td" in r]
+        return [[strip(c) for c in re.findall(r"<td[^>]*>(.*?)</td>", r, re.S)] for r in rows]
+
+    assert paid_state(2, 1) == [(1, today_iso, None)], "Engleza (fara pret) platita: data azi, suma necunoscuta"
+    ajax(admin, "/supplies/1/track", {"student_id": "2", "chosen": "1", "paid": "1"}, page="/supplies/1")
+    assert paid_state(1, 2) == [(1, today_iso, 1250)], "data de azi si pretul din acel moment (12,50)"
+    post(admin, "/supplies/1/edit", {"name": "Caiet dictando", "category": "Caiete", "price": "20", "note": "tip II"}, page="/supplies/1/edit")
+    assert paid_state(1, 2) == [(1, today_iso, 1250)], "pretul schimbat ulterior nu modifica plata deja facuta"
+    c = sqlite3.connect(os.environ["FOND_DB"])
+    c.execute("UPDATE supply_tracking SET paid_on = '2026-01-05' WHERE supply_id = 1 AND student_id = 2")   # simulam o plata mai veche
+    c.commit()
+    c.close()
+    ajax(admin, "/supplies/1/track", {"student_id": "2", "chosen": "1", "paid": "1", "received": "1"}, page="/supplies/1")
+    assert paid_state(1, 2) == [(1, "2026-01-05", 1250)], "o noua salvare cu Plătit bifat nu schimba data si suma"
+    # istoricul: contributii + rechizite, cele mai recente primele
+    rows2 = history_rows(admin.get("/students/2").get_data(as_text=True))
+    assert [r[:3] for r in rows2] == [["20.09.2026", "Fond septembrie", "20,00 lei"],
+                                     ["05.01.2026", "Rechizit: Caiet dictando", "12,50 lei"]], rows2
+    # parintele elevului 1 vede ce a platit (contributie + rechizit), fara butoane de stergere
+    parent_history = parent.get("/students/1").get_data(as_text=True)
+    assert sorted(r[:3] for r in history_rows(parent_history)) == sorted([
+        [date.today().strftime("%d.%m.%Y"), "Rechizit: Engleza", "preț nestabilit"],
+        ["20.09.2026", "Fond septembrie", "50,00 lei"]])
+    assert "Ștergi această plată" not in parent_history and "payment_delete" not in parent_history
+    # exportul de plati are si rechizitele
+    plati = admin.get("/export/payments.csv").get_data(as_text=True).replace("\r", "")
+    assert plati.startswith("\ufeffData;Elev;Contribuție / rechizit;Suma (lei);Observații")
+    assert "2026-01-05;Ionescu Mihai;Rechizit: Caiet dictando;12,50;" in plati
+    assert f"{today_iso};Popescu Ana;Rechizit: Engleza;;" in plati
+    # debifarea Platit sterge data si suma si scoate randul din istoric
+    ajax(admin, "/supplies/1/track", {"student_id": "2", "chosen": "1"}, page="/supplies/1")
+    assert paid_state(1, 2) == [(0, None, None)]
+    assert "Rechizit: Caiet dictando" not in admin.get("/students/2").get_data(as_text=True).split("<h2>Istoric plăți</h2>")[1]
+    # un elev cu plati la rechizite nu se poate sterge (s-ar pierde istoricul); dupa anulare se poate
+    post(admin, "/students", {"names": "Elev Temp"}, page="/students")
+    tid = sql("SELECT id FROM students WHERE name = 'Elev Temp'")[0][0]
+    ajax(admin, "/supplies/1/track", {"student_id": str(tid), "chosen": "1", "paid": "1"}, page="/supplies/1")
+    r = post(admin, f"/students/{tid}/delete", {}, page=f"/students/{tid}")
+    assert "nu poate fi șters" in r.get_data(as_text=True) and sql("SELECT COUNT(*) FROM students WHERE id = ?", tid) == [(1,)]
+    ajax(admin, "/supplies/1/track", {"student_id": str(tid)}, page="/supplies/1")
+    assert "Elev șters" in post(admin, f"/students/{tid}/delete", {}, page=f"/students/{tid}").get_data(as_text=True)
+    assert sql("SELECT COUNT(*) FROM supply_tracking WHERE student_id = ?", tid) == [(0,)]
+    # se readuce pretul la valoarea initiala, pentru verificarile de mai jos
+    post(admin, "/supplies/1/edit", {"name": "Caiet dictando", "category": "Caiete", "price": "12,50", "note": "tip II"}, page="/supplies/1/edit")
+    assert sql("SELECT price FROM supplies WHERE id = 1") == [(1250,)]
 
     # export (admin): cantitatea de comandat si numele elevilor pe coloane
     csv_text = admin.get("/export/supplies.csv").get_data(as_text=True).replace("\r", "")

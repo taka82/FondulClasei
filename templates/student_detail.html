@@ -30,7 +30,7 @@
   {% else %}
     <p class="muted">Niciun rechizit ales încă.</p>
   {% endif %}
-  <p class="muted small">Ce a plătit copilul pentru rechizite (manuale etc.) apare aici, la coloana „Plătit”, bifat de casier.
+  <p class="muted small">Ce a plătit copilul pentru rechizite (manuale etc.) apare aici, la coloana „Plătit” (bifat de casier), și în „Istoric plăți”, cu data la care s-a bifat.
     <a href="{{ url_for('supplies') }}">Vezi lista de rechizite</a>.</p>
 </section>
 {% endset %}
@@ -76,16 +76,19 @@
 {% endif %}
 <section class="card">
   <h2>Istoric plăți</h2>
-  {% if payments %}
+  {% if history %}
   <div class="scroll"><table>
-    <thead><tr><th>Data</th><th>Contribuție</th><th class="num">Suma</th><th>Observații</th>{% if is_staff %}<th></th>{% endif %}</tr></thead>
-    {% for p in payments %}
+    <thead><tr><th>Data</th><th>Contribuție / rechizit</th><th class="num">Suma</th><th>Observații</th>{% if is_staff %}<th></th>{% endif %}</tr></thead>
+    {% for h in history %}
     <tr>
-      <td class="nowrap">{{ p['paid_on']|ro_date }}</td>
-      <td>{{ p['contribution'] }}</td>
-      <td class="num">{{ p['amount']|money }}</td>
-      <td class="muted">{{ p['note'] }}</td>
-      {% if is_staff %}<td class="actions">{{ delete_button(url_for('payment_delete', payment_id=p['id']), request.path, 'Ștergi această plată?') }}</td>{% endif %}
+      <td class="nowrap">{% if h['date'] %}{{ h['date']|ro_date }}{% else %}<span class="muted">—</span>{% endif %}</td>
+      <td>{% if h['supply_id'] %}<a href="{{ url_for('supply_detail', supply_id=h['supply_id']) }}">{{ h['label'] }}</a>{% else %}{{ h['label'] }}{% endif %}</td>
+      <td class="num">{% if h['amount'] %}{{ h['amount']|money }}{% else %}<span class="muted small">preț nestabilit</span>{% endif %}</td>
+      <td class="muted">{{ h['note'] }}</td>
+      {% if is_staff %}<td class="actions">
+        {% if h['payment_id'] %}{{ delete_button(url_for('payment_delete', payment_id=h['payment_id']), request.path, 'Ștergi această plată?') }}
+        {% else %}<a href="{{ url_for('supply_detail', supply_id=h['supply_id']) }}">Modifică</a>{% endif %}
+      </td>{% endif %}
     </tr>
     {% endfor %}
   </table></div>
@@ -107,7 +110,7 @@
       <input type="hidden" name="csrf" value="{{ csrf_token() }}">
       <button class="btn small secondary">{{ 'Dezactivează elevul' if student['active'] else 'Reactivează elevul' }}</button>
     </form>
-    {% if not payments %}
+    {% if not history %}
     <form method="post" action="{{ url_for('student_delete', student_id=student['id']) }}" class="inline"
           onsubmit="return confirm('Ștergi definitiv elevul?')">
       <input type="hidden" name="csrf" value="{{ csrf_token() }}">

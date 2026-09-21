@@ -393,7 +393,16 @@ def student_detail(student_id):
         (student_id,)
     )
     unpaid = [t for t in supplies_of_student if t["chosen"] and not t["paid"]]
-    return render_template("student_detail.html", student=student, rows=rows, payments=payments,
+    supply_payments = db.query(
+        "SELECT sp.id AS supply_id, sp.name, t.paid_on, COALESCE(t.paid_amount, sp.price) AS amount "
+        "FROM supply_tracking t JOIN supplies sp ON sp.id = t.supply_id WHERE t.student_id = ? AND t.paid = 1",
+        (student_id,))
+    history = [{"date": p["paid_on"], "label": p["contribution"], "amount": p["amount"], "note": p["note"],
+                "payment_id": p["id"], "supply_id": None} for p in payments]
+    history += [{"date": t["paid_on"], "label": "Rechizit: " + t["name"], "amount": t["amount"], "note": "",
+                 "payment_id": None, "supply_id": t["supply_id"]} for t in supply_payments]
+    history.sort(key=lambda h: h["date"] or "", reverse=True)   # cele fara data (bifate inainte) la final
+    return render_template("student_detail.html", student=student, rows=rows, payments=payments, history=history,
                            student_supplies=supplies_of_student, today=date.today().isoformat(),
                            supplies_owed=sum(t["price"] for t in unpaid if t["price"]),
                            supplies_unpriced=sum(1 for t in unpaid if t["price"] is None))
@@ -430,8 +439,9 @@ def student_toggle(student_id):
 @staff_required
 def student_delete(student_id):
     student_or_403(student_id)
-    if db.scalar("SELECT COUNT(*) FROM payments WHERE student_id = ?", (student_id,)):
-        flash("Elevul are plăți înregistrate și nu poate fi șters. Dezactiveaz-l în schimb.", "error")
+    if db.scalar("SELECT COUNT(*) FROM payments WHERE student_id = ?", (student_id,)) or \
+       db.scalar("SELECT COUNT(*) FROM supply_tracking WHERE student_id = ? AND paid = 1", (student_id,)):
+        flash("Elevul are plăți înregistrate (contribuții sau rechizite) și nu poate fi șters. Dezactivează-l în schimb.", "error")
         return redirect(url_for("student_detail", student_id=student_id))
     db.execute("DELETE FROM students WHERE id = ?", (student_id,))
     flash("Elev șters.", "ok")
@@ -765,10 +775,16 @@ def export_payments():
         "JOIN students s ON s.id = p.student_id JOIN contributions c ON c.id = p.contribution_id "
         "ORDER BY p.paid_on, p.id"
     )
-    return csv_response("plati.csv", ["Data", "Elev", "Contribuție", "Suma (lei)", "Observații"],
-                        [(r["paid_on"], csv_safe(r["student"]), csv_safe(r["contribution"]),
-                          f"{r['amount'] / 100:.2f}".replace(".", ","), csv_safe(r["note"] or ""))
-                         for r in rows])
+    supply_payments = db.query(
+        "SELECT t.paid_on AS paid_on, st.name AS student, 'Rechizit: ' || sp.name AS contribution, "
+        "       COALESCE(t.paid_amount, sp.price) AS amount, '' AS note "
+        "FROM supply_tracking t JOIN students st ON st.id = t.student_id JOIN supplies sp ON sp.id = t.supply_id "
+        "WHERE t.paid = 1"
+    )
+    rows = sorted([*rows, *supply_payments], key=lambda r: r["paid_on"] or "")   # sortare stabila dupa data
+    return csv_response("plati.csv", ["Data", "Elev", "Contribuție / rechizit", "Suma (lei)", "Observații"],
+                        [(r["paid_on"] or "", csv_safe(r["student"]), csv_safe(r["contribution"]),
+                          lei(r["amount"]), csv_safe(r["note"] or "")) for r in rows])
 
 
 @app.route("/export/restante.csv")
@@ -953,7 +969,7 @@ def supply_delete(supply_id):
 @staff_required
 def supply_track(supply_id):
     """Salveaza bifele Ales / Plătit / Primit ale unui elev pentru un rechizit."""
-    supply_or_404(supply_id)
+    supply = supply_or_404(supply_id)
     try:
         student_id = int(request.form.get("student_id", ""))
     except ValueError:
@@ -961,11 +977,20 @@ def supply_track(supply_id):
     if not db.one("SELECT 1 FROM students WHERE id = ?", (student_id,)):
         abort(404)
     chosen, paid, received = (1 if request.form.get(k) else 0 for k in ("chosen", "paid", "received"))
+    previous = db.one("SELECT paid, paid_on, paid_amount FROM supply_tracking WHERE supply_id = ? AND student_id = ?",
+                      (supply_id, student_id))
+    if not paid:
+        paid_on = paid_amount = None
+    elif previous and previous["paid"]:
+        paid_on, paid_amount = previous["paid_on"], previous["paid_amount"]    # ramane data/suma de la prima bifare
+    else:
+        paid_on, paid_amount = date.today().isoformat(), supply["price"]       # suma = pretul de la momentul platii
     db.execute(
-        "INSERT INTO supply_tracking(supply_id, student_id, chosen, paid, received) VALUES (?, ?, ?, ?, ?) "
-        "ON CONFLICT(supply_id, student_id) DO UPDATE SET "
-        "chosen = excluded.chosen, paid = excluded.paid, received = excluded.received",
-        (supply_id, student_id, chosen, paid, received),
+        "INSERT INTO supply_tracking(supply_id, student_id, chosen, paid, received, paid_on, paid_amount) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?) "
+        "ON CONFLICT(supply_id, student_id) DO UPDATE SET chosen = excluded.chosen, paid = excluded.paid, "
+        "received = excluded.received, paid_on = excluded.paid_on, paid_amount = excluded.paid_amount",
+        (supply_id, student_id, chosen, paid, received, paid_on, paid_amount),
     )
     if wants_fragment():
         counts = supply_or_404(supply_id)

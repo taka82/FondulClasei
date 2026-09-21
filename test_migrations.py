@@ -131,6 +131,7 @@ def main():
     db.migrate(fresh_real)
     assert version(fresh_real) == latest
     assert "price" in columns(fresh_real, "supplies")
+    assert {"paid_on", "paid_amount"} <= set(columns(fresh_real, "supply_tracking"))
     upgrade = work / "upgrade" / "fond.db"
     upgrade.parent.mkdir()
     conn = sqlite3.connect(upgrade)
