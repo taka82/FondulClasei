@@ -20,7 +20,7 @@ python -m venv .venv
 
 Deschide http://127.0.0.1:5000. La prima pornire (local) se cere crearea contului de administrator.
 
-**Pentru acces de oriunde** (părinții de pe telefon, de acasă) aplicația se pune online: vezi **[DEPLOY.md](DEPLOY.md)**, ghid pas cu pas pentru PythonAnywhere. Pe server, contul de casier se creează din consolă cu `create_admin.py`, iar pagina `/setup` din browser e dezactivată.
+**Pentru acces de oriunde** (părinții de pe telefon, de acasă) aplicația se pune online: vezi **[DEPLOY.md](DEPLOY.md)**, ghid pas cu pas pentru PythonAnywhere. Pe server, contul de administrator se creează din consolă cu `create_admin.py`, iar pagina `/setup` din browser e dezactivată.
 
 Pentru acces din rețeaua locală (ex: părinții de pe telefon, în aceeași rețea): `set FOND_HOST=0.0.0.0` înainte de pornire. Pentru acces prin internet, pune aplicația în spatele unui reverse proxy cu HTTPS.
 
@@ -41,7 +41,7 @@ Părinții nu văd plățile altor elevi.
 1. **Elevi** → adaugă lista clasei (un nume pe rând).
 2. **Contribuții** → creează „Fond septembrie”, „Excursie” etc. cu suma per elev.
 3. Deschide o contribuție și apasă **Plătit** în dreptul elevului (sau modifică suma pentru plăți parțiale).
-4. **Cheltuieli** → înregistrează ce s-a cheltuit, cu categorie. **Fiecare cheltuială se împarte egal între elevii activi** de la momentul înregistrării (suma exactă: restul de bani se distribuie, deci totalul părților e întotdeauna egal cu suma cheltuită). Partea fiecărui elev apare în **Istoricul** lui (și la părinte), ca „cheltuială”, cu suma lui și totalul cheltuielii; pagina Cheltuieli arată „Pe elev” (~media) și numărul de elevi. La modificarea sumei, părțile se recalculează pentru aceiași elevi; un elev adăugat mai târziu nu primește parte din cheltuielile vechi. Părțile sunt **informative**: nu se adaugă la restanțe și nu modifică soldul fondului.
+4. **Cheltuieli** → înregistrează ce s-a cheltuit, cu categorie. **Fiecare cheltuială se împarte egal între elevii activi** de la momentul înregistrării (suma exactă: restul de bani se distribuie, deci totalul părților e întotdeauna egal cu suma cheltuită). Partea fiecărui elev apare în **Istoricul** lui (și la părinte), ca „cheltuială”, cu suma lui și totalul cheltuielii; pagina Cheltuieli arată „Pe elev” (~media) și numărul de elevi. La modificarea sumei, părțile se recalculează pentru aceiași elevi; un elev adăugat mai târziu nu primește parte din cheltuielile vechi. Partea din cheltuieli **se scade din contribuția plătită**: pe pagina elevului (și la părinte) apare „Plătit − cheltuieli (partea copilului) = **rămas din contribuții**” (negativ = „de completat”), iar pagina **Elevi** are grupul *Contribuție*: Plătit, − Cheltuieli, = Rămas, cu totaluri. Suma „rămas” pe toți elevii este chiar soldul curent al fondului (fără soldul reportat din anul anterior). Nu modifică restanțele la contribuții și rechizite.
 5. **Conturi** (doar administratorul) → creează conturi de părinte (legate de un elev), de casier sau de administrator.
 6. **Setări** → numele clasei și soldul reportat din anul anterior.
 
@@ -59,7 +59,7 @@ Pagina **Rechizite** ține lista de rechizite ale clasei (denumire, categorie, p
 
 **Plata rechizitelor în istoric:** când casierul bifează „Plătit” la un rechizit, aplicația reține **data** (ziua bifării) și **suma** (prețul din acel moment, chiar dacă prețul se schimbă ulterior). Plata apare în „Istoric plăți” al elevului (și la părinte), lângă plățile la contribuții, ca „Rechizit: …”, precum și în exportul `plati.csv`. Dacă „Plătit” s-a bifat înainte să existe această funcție sau rechizitul nu are preț, data apare „—” și suma „preț nestabilit”; debifând și bifând din nou „Plătit” se înregistrează data de azi. Bifa „Plătit” **nu** intră în soldul fondului. Un elev cu rechizite plătite nu poate fi șters (se dezactivează).
 
-**Restanțe la rechizite:** pagina **Elevi** arată pentru fiecare elev *Plătit* (contribuții), *Restanță* împărțită în *Contribuții*, *Rechizite* și *Total*, plus un rând de totaluri. Restanța la rechizite = rechizitele **alese** (bifa „Ales”) și încă **neplătite** (bifa „Plătit” lipsește), la prețul lor; cele fără preț nu se pot socoti și apar marcate „+N fără preț”. Același total apare pe pagina elevului („Situația mea” la părinte), în cardul **Restanțe** de pe Panou (cu mențiunea „din care rechizite”) și în exportul `restante.csv`, care listează acum și rechizitele.
+**Restanțe la rechizite:** pagina **Elevi** arată pentru fiecare elev grupul *Contribuție* (Plătit, − Cheltuieli, = Rămas) și grupul *Restanță* (*Contribuții*, *Rechizite*, *Total*), plus un rând de totaluri. Restanța la rechizite = rechizitele **alese** (bifa „Ales”) și încă **neplătite** (bifa „Plătit” lipsește), la prețul lor; cele fără preț nu se pot socoti și apar marcate „+N fără preț”. Același total apare pe pagina elevului („Situația mea” la părinte), în cardul **Restanțe** de pe Panou (cu mențiunea „din care rechizite”) și în exportul `restante.csv`, care listează acum și rechizitele.
 
 **Cine poate bifa ce:**
 

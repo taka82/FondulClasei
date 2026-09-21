@@ -8,15 +8,18 @@
     {% if students %}
     <div class="scroll"><table>
       <thead>
-        <tr><th rowspan="2">Nume</th><th class="num" rowspan="2">Plătit<br><span class="muted small">contribuții</span></th>
+        <tr><th rowspan="2">Nume</th><th class="grp" colspan="3">Contribuție</th>
             <th class="grp" colspan="3">Restanță</th><th rowspan="2"></th></tr>
-        <tr><th class="num">Contribuții</th><th class="num">Rechizite</th><th class="num">Total</th></tr>
+        <tr><th class="num">Plătit</th><th class="num">− Cheltuieli</th><th class="num">= Rămas</th>
+            <th class="num">Contribuții</th><th class="num">Rechizite</th><th class="num">Total</th></tr>
       </thead>
       {% for s in students %}
       <tr class="{{ 'dim' if not s['active'] }}">
         <td><a href="{{ url_for('student_detail', student_id=s['id']) }}">{{ s['name'] }}</a>
             {% if not s['active'] %}<span class="badge">inactiv</span>{% endif %}</td>
         <td class="num">{{ s['paid']|money }}</td>
+        <td class="num">{{ s['expenses_share']|money }}</td>
+        <td class="num {{ 'owed' if s['paid'] - s['expenses_share'] < 0 }}"><strong>{{ (s['paid'] - s['expenses_share'])|money }}</strong></td>
         <td class="num {{ 'owed' if s['owed'] > 0 }}">{{ s['owed']|money }}</td>
         <td class="num {{ 'owed' if s['supplies_owed'] > 0 }}">{{ s['supplies_owed']|money }}
           {% if s['supplies_unpriced'] %}<br><span class="muted small" title="Rechizite alese și neplătite, fără preț stabilit: nu sunt incluse în sumă">+{{ s['supplies_unpriced'] }} fără preț</span>{% endif %}</td>
@@ -30,10 +33,14 @@
       </tr>
       {% endfor %}
       <tfoot><tr><th>Total</th><th class="num">{{ students|sum(attribute='paid')|money }}</th>
+        <th class="num">{{ students|sum(attribute='expenses_share')|money }}</th>
+        <th class="num">{{ (students|sum(attribute='paid') - students|sum(attribute='expenses_share'))|money }}</th>
         <th class="num">{{ students|sum(attribute='owed')|money }}</th>
         <th class="num">{{ students|sum(attribute='supplies_owed')|money }}</th>
         <th class="num">{{ (students|sum(attribute='owed') + students|sum(attribute='supplies_owed'))|money }}</th><th></th></tr></tfoot>
     </table></div>
+    <p class="muted small"><strong>Rămas</strong> = ce a plătit elevul la contribuții minus partea lui din cheltuielile clasei (se împart egal între elevi).
+      Un rămas negativ înseamnă că partea din cheltuieli depășește ce a plătit. Suma tuturor „rămas” = soldul curent al fondului, fără soldul reportat din anul anterior.</p>
     <p class="muted small">Restanța la rechizite = rechizitele <strong>alese</strong> (bifa „Ales”) și încă <strong>neplătite</strong>, la prețul lor. Elevii dezactivați nu au restanțe.</p>
     <p><a href="{{ url_for('export_outstanding') }}">Descarcă restanțele (CSV)</a> ·
        <a href="{{ url_for('export_payments') }}">Descarcă plățile (CSV)</a></p>

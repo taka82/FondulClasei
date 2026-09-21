@@ -343,19 +343,19 @@ def main():
         assert ajax(admin, f"/supplies/{sup_id(name)}/track", {"student_id": "3", "chosen": "1"}, page="/supplies").status_code == 200
     page_students = admin.get("/students").get_data(as_text=True)
     # [platit, restanta contributii, restanta rechizite, total]
-    assert student_cells(page_students, "Popescu Ana") == ["50,00 lei", "120,50 lei", "12,50 lei", "133,00 lei"]
-    assert student_cells(page_students, "Ionescu Mihai") == ["20,00 lei", "150,50 lei", "12,50 lei", "163,00 lei"]
-    assert student_cells(page_students, "Vasile Dan") == ["0,00 lei", "170,50 lei", "3,00 lei +1 fără preț", "173,50 lei"]
+    assert student_cells(page_students, "Popescu Ana") == ["50,00 lei", "10,00 lei", "40,00 lei", "120,50 lei", "12,50 lei", "133,00 lei"]
+    assert student_cells(page_students, "Ionescu Mihai") == ["20,00 lei", "10,00 lei", "10,00 lei", "150,50 lei", "12,50 lei", "163,00 lei"]
+    assert student_cells(page_students, "Vasile Dan") == ["0,00 lei", "10,00 lei", "-10,00 lei", "170,50 lei", "3,00 lei +1 fără preț", "173,50 lei"]
     tfoot = strip(re.search(r"<tfoot>(.*?)</tfoot>", page_students, re.S).group(1))
-    assert tfoot == "Total 70,00 lei 441,50 lei 28,00 lei 469,50 lei", tfoot
+    assert tfoot == "Total 70,00 lei 30,00 lei 40,00 lei 441,50 lei 28,00 lei 469,50 lei", tfoot
     assert "Restanță" in page_students and "Rechizite" in page_students
     # bifa Plătit la rechizit scoate suma din restanta; rechizitul fara pret ramane doar semnalat
     ajax(admin, f"/supplies/{sup_id('Caiet mate')}/track", {"student_id": "3", "chosen": "1", "paid": "1"}, page="/supplies")
-    assert student_cells(admin.get("/students").get_data(as_text=True), "Vasile Dan") == ["0,00 lei", "170,50 lei", "0,00 lei +1 fără preț", "170,50 lei"]
+    assert student_cells(admin.get("/students").get_data(as_text=True), "Vasile Dan") == ["0,00 lei", "10,00 lei", "-10,00 lei", "170,50 lei", "0,00 lei +1 fără preț", "170,50 lei"]
     ajax(admin, f"/supplies/{sup_id('Caiet mate')}/track", {"student_id": "3", "chosen": "1"}, page="/supplies")   # inapoi la neplatit
     # elev dezactivat: fara restante
     post(admin, "/students/3/toggle", {}, page="/students")
-    assert student_cells(admin.get("/students").get_data(as_text=True), "Vasile Dan")[1:] == ["0,00 lei", "0,00 lei", "0,00 lei"]
+    assert student_cells(admin.get("/students").get_data(as_text=True), "Vasile Dan")[3:] == ["0,00 lei", "0,00 lei", "0,00 lei"]
     post(admin, "/students/3/toggle", {}, page="/students")
     # panou: Restante = contributii + rechizite, cu mentiune separata
     dash = admin.get("/").get_data(as_text=True)
@@ -432,6 +432,23 @@ def main():
     post(admin, "/supplies/1/edit", {"name": "Caiet dictando", "category": "Caiete", "price": "12,50", "note": "tip II"}, page="/supplies/1/edit")
     assert sql("SELECT price FROM supplies WHERE id = 1") == [(1250,)]
 
+    # --- cheltuiala se scade din contributie: ramas = platit (contributii) - partea din cheltuieli
+    def balance_line(html):
+        return strip(re.search(r'<p class="balance-line">(.*?)</p>', html, re.S).group(1))
+
+    assert balance_line(admin.get("/students/1").get_data(as_text=True)) == \
+        "Plătit: 50,00 lei − cheltuieli (partea copilului): 10,00 lei = rămas din contribuții: 40,00 lei"
+    assert balance_line(parent.get("/students/1").get_data(as_text=True)) == \
+        "Plătit: 50,00 lei − cheltuieli (partea copilului): 10,00 lei = rămas din contribuții: 40,00 lei", "parintele isi vede soldul"
+    assert balance_line(admin.get("/students/3").get_data(as_text=True)) == \
+        "Plătit: 0,00 lei − cheltuieli (partea copilului): 10,00 lei = rămas din contribuții: -10,00 lei (de completat)"
+    assert 'class="owed">rămas din contribuții: -10,00 lei' in admin.get("/students/3").get_data(as_text=True), "negativul e evidentiat"
+    # coerenta cu fondul: suma partilor = cheltuielile, deci suma "ramas" pe elevi = incasat - cheltuit (= sold curent - sold initial)
+    assert sql("SELECT SUM(amount) FROM expense_shares") == sql("SELECT SUM(amount) FROM expenses")
+    rest_total = strip(re.search(r"<tfoot>(.*?)</tfoot>", admin.get("/students").get_data(as_text=True), re.S).group(1)).split()
+    assert "40,00" in rest_total, "suma 'ramas' pe toti elevii"
+    assert "1.040,00 lei" in admin.get("/").get_data(as_text=True), "sold curent = 1.000 reportat + 40 ramas"
+
     # --- cheltuielile se impart egal intre elevi; partea fiecaruia apare in istoricul lui
     def shares(expense_id):
         return sql("SELECT student_id, amount FROM expense_shares WHERE expense_id = ? ORDER BY student_id", expense_id)
@@ -455,7 +472,7 @@ def main():
     assert "33,33 lei din" not in parent.get("/students/1").get_data(as_text=True)
     assert "Ștergi această plată" not in parent.get("/students/1").get_data(as_text=True)
     me_page = parent.get("/students/1").get_data(as_text=True)
-    assert "Partea copilului din cheltuieli, în total:" in me_page and "Nu se adaugă la restanțe" in me_page
+    assert "Partea copilului din cheltuieli, în total:" in me_page and "se scad din contribuția plătită" in me_page
     # pagina Cheltuieli si exportul arata cati elevi si cat revine fiecaruia
     exp_page = parent.get("/expenses").get_data(as_text=True)
     assert "Pe elev" in exp_page and "~33,34 lei" in exp_page and "3 elevi" in exp_page

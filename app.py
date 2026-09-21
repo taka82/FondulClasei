@@ -349,6 +349,7 @@ def students():
     rows = db.query(
         "SELECT s.*, "
         " COALESCE((SELECT SUM(amount) FROM payments WHERE student_id = s.id), 0) AS paid, "
+        " COALESCE((SELECT SUM(amount) FROM expense_shares WHERE student_id = s.id), 0) AS expenses_share, "
         " CASE WHEN s.active THEN COALESCE((SELECT SUM(MAX(amount - paid, 0)) "
         "   FROM balances WHERE student_id = s.id), 0) ELSE 0 END AS owed, "
         # rechizite: alese (Ales) si neplatite; cele fara pret nu se pot socoti, dar se numara separat
@@ -413,6 +414,8 @@ def student_detail(student_id):
     return render_template("student_detail.html", student=student, rows=rows, payments=payments, history=history,
                            deletable=not (payments or supply_payments),
                            expenses_share_total=sum(x["share"] for x in expense_shares),
+                           paid_total=sum(p["amount"] for p in payments),
+                           remaining=sum(p["amount"] for p in payments) - sum(x["share"] for x in expense_shares),
                            student_supplies=supplies_of_student, today=date.today().isoformat(),
                            supplies_owed=sum(t["price"] for t in unpaid if t["price"]),
                            supplies_unpriced=sum(1 for t in unpaid if t["price"] is None))

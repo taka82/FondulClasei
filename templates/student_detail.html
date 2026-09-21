@@ -70,6 +70,13 @@
   {% else %}
     <p class="muted">Nu există contribuții.</p>
   {% endif %}
+  {% if paid_total or expenses_share_total %}
+  <p class="balance-line">Plătit: <strong>{{ paid_total|money }}</strong>
+    − cheltuieli (partea copilului): <strong>{{ expenses_share_total|money }}</strong>
+    = <strong class="{{ 'owed' if remaining < 0 }}">rămas din contribuții: {{ remaining|money }}</strong>
+    {% if remaining < 0 %}<span class="muted small">(de completat)</span>{% endif %}</p>
+  <p class="muted small">Cheltuielile clasei se împart egal între elevi și se scad din ce a plătit copilul la contribuții.</p>
+  {% endif %}
 </section>
 
 {% if is_staff %}{{ supplies_card }}
@@ -97,8 +104,8 @@
     {% endfor %}
   </table></div>
   {% if expenses_share_total %}
-  <p class="muted small">Cheltuielile clasei se împart egal între elevi. <strong>Partea copilului din cheltuieli, în total:</strong>
-    {{ expenses_share_total|money }}. Nu se adaugă la restanțe și nu se scade din ce a plătit.</p>
+  <p class="muted small">Cheltuielile clasei se împart egal între elevi și se scad din contribuția plătită (vezi „rămas din contribuții”, sus).
+    <strong>Partea copilului din cheltuieli, în total:</strong> {{ expenses_share_total|money }}.</p>
   {% endif %}
   {% else %}
     <p class="muted">Nicio plată înregistrată.</p>

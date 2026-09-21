@@ -82,6 +82,7 @@ h2 { font-size: 1.15rem; margin: 0 0 12px; }
 .stat .sub { font-size: .8rem; opacity: .85; }
 th.grp { text-align: center; border-bottom: 1px solid var(--line); }
 .owed-line { margin: 12px 0 0; }
+.balance-line { margin: 12px 0 4px; font-size: 1.02rem; }
 @media (max-width: 780px) { .stats { grid-template-columns: 1fr 1fr; } .stat.main { grid-column: 1 / -1; } }
 
 /* tabele */
